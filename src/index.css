@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --color-olive-50: #f7f8f0;
+  --color-olive-100: #eaecda;
+  --color-olive-200: #d4d9b5;
+  --color-olive-300: #b8bf88;
+  --color-olive-400: #9da561;
+  --color-olive-500: #828a46;
+  --color-olive-600: #666e36;
+  --color-olive-700: #4f552c;
+  --color-olive-800: #404527;
+  --color-olive-900: #373b24;
+
+  --color-steel-50: #f0f4f8;
+  --color-steel-100: #d9e2ec;
+  --color-steel-200: #bcccdc;
+  --color-steel-300: #9fb3c8;
+  --color-steel-400: #829ab1;
+  --color-steel-500: #627d98;
+  --color-steel-600: #486581;
+  --color-steel-700: #334e68;
+  --color-steel-800: #243b53;
+  --color-steel-900: #102a43;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #0d1117;
+  color: #e6edf3;
+  font-family: 'Inter', system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1c2128;
+}
+::-webkit-scrollbar-thumb {
+  background: #373e47;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4d5566;
+}
+
+canvas {
+  cursor: default;
+}
+
+.glass {
+  background: rgba(22, 27, 34, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+}
