@@ -80,11 +80,25 @@ function nextPlayerIndex(state: GameState): number {
 }
 
 function updateLongestRoad(state: GameState): void {
+  let bestPlayer: string | null = null
+  let bestLength = 4
+
   for (const playerId of state.playerOrder) {
     const len = calculateLongestRoad(playerId, state.vertices, state.edges)
-    if (len >= 5 && len > state.longestRoadLength) {
-      state.longestRoadLength = len
-      state.longestRoadPlayerId = playerId
+    if (len >= 5 && len > bestLength) {
+      bestLength = len
+      bestPlayer = playerId
+    }
+  }
+
+  if (bestPlayer) {
+    state.longestRoadPlayerId = bestPlayer
+    state.longestRoadLength = bestLength
+  } else if (state.longestRoadPlayerId) {
+    const currentLen = calculateLongestRoad(state.longestRoadPlayerId, state.vertices, state.edges)
+    if (currentLen < 5) {
+      state.longestRoadPlayerId = null
+      state.longestRoadLength = 4
     }
   }
 }
@@ -477,8 +491,12 @@ export const useGameStore = create<GameStore>()(
       if (!s.game) return
       const game = s.game
       if (game.devCardPlayedThisTurn) return
+      if (game.phase !== 'playing') return
+
       const playerId = game.playerOrder[game.currentPlayerIndex]
       const player = game.players[playerId]
+
+      if (type !== 'soldier' && !game.hasRolled) return
 
       const cardIdx = player.devCards.indexOf(type)
       if (cardIdx === -1) return

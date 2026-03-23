@@ -7,7 +7,7 @@ import {
   TERRAIN_RESOURCE,
 } from './gameLogic'
 import { generateTiles, generateVerticesAndEdges, HEX_SIZE } from './hexGrid'
-import type { Player, Resources, GameState } from '../types/game'
+import type { Player, GameState } from '../types/game'
 import { EMPTY_RESOURCES } from '../types/game'
 import { BOARD_CENTER } from '../constants/colors'
 

@@ -15,6 +15,8 @@ export type AIAction =
   | { type: 'bank_trade'; giving: ResourceType; receiving: ResourceType }
   | { type: 'setup_outpost'; vertexId: string }
   | { type: 'setup_route'; edgeId: string }
+  | { type: 'play_soldier' }
+  | { type: 'play_road_building' }
 
 function scoreVertex(vertexId: string, state: GameState): number {
   const vertex = state.vertices[vertexId]
@@ -97,7 +99,17 @@ export function getAIAction(state: GameState, playerId: string): AIAction | null
 
   if (phase !== 'playing') return null
 
-  if (!state.hasRolled) return { type: 'roll' }
+  const player = state.players[playerId]
+
+  if (!state.hasRolled) {
+    if (!state.devCardPlayedThisTurn && player.devCards.includes('soldier')) {
+      return { type: 'play_soldier' }
+    }
+    return { type: 'roll' }
+  }
+
+  const devAction = considerDevCard(state, playerId)
+  if (devAction) return devAction
 
   const tradeAction = considerTrade(state, playerId)
   if (tradeAction) return tradeAction
@@ -160,6 +172,26 @@ function considerTrade(state: GameState, playerId: string): AIAction | null {
     if (giving) {
       return { type: 'bank_trade', giving, receiving }
     }
+  }
+
+  return null
+}
+
+function considerDevCard(state: GameState, playerId: string): AIAction | null {
+  if (state.devCardPlayedThisTurn) return null
+  const player = state.players[playerId]
+
+  if (player.devCards.includes('road_building')) {
+    const validRoutes = Object.keys(state.edges).filter(id =>
+      canPlaceRoad(id, playerId, state, false)
+    )
+    if (validRoutes.length >= 2) {
+      return { type: 'play_road_building' }
+    }
+  }
+
+  if (player.devCards.includes('soldier')) {
+    return { type: 'play_soldier' }
   }
 
   return null

@@ -14,6 +14,7 @@ export function useAIPlayer() {
   const buildBase = useGameStore(s => s.buildBase)
   const buyDevCard = useGameStore(s => s.buyDevCard)
   const bankTrade = useGameStore(s => s.bankTrade)
+  const playDevCard = useGameStore(s => s.playDevCard)
   const clickVertex = useGameStore(s => s.clickVertex)
   const clickEdge = useGameStore(s => s.clickEdge)
   const clickTile = useGameStore(s => s.clickTile)
@@ -100,6 +101,12 @@ export function useAIPlayer() {
         case 'bank_trade':
           bankTrade(action.giving, action.receiving)
           break
+        case 'play_soldier':
+          playDevCard('soldier')
+          break
+        case 'play_road_building':
+          playDevCard('road_building')
+          break
         case 'setup_outpost':
           clickVertex(action.vertexId)
           break
@@ -114,7 +121,7 @@ export function useAIPlayer() {
     game,
     discardTarget,
     rollDice, endTurn, buildRoute, buildOutpost, buildBase,
-    buyDevCard, bankTrade, clickVertex, clickEdge, clickTile,
+    buyDevCard, bankTrade, playDevCard, clickVertex, clickEdge, clickTile,
     updateDiscardSelection, confirmDiscard,
   ])
 }

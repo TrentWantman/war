@@ -29,7 +29,9 @@ export function DevCardMenu() {
   if (!game) return null
   const playerId = game.playerOrder[game.currentPlayerIndex]
   const player = game.players[playerId]
-  const canPlay = !game.devCardPlayedThisTurn && game.hasRolled
+  const canPlayBase = !game.devCardPlayedThisTurn
+  const canPlaySoldier = canPlayBase
+  const canPlayOther = canPlayBase && game.hasRolled
 
   const cardCounts: Partial<Record<DevCardType, number>> = {}
   for (const card of player.devCards) {
@@ -149,11 +151,12 @@ export function DevCardMenu() {
                 )}
                 {playableCards.map(([type, count]) => {
                   const info = CARD_INFO[type]
+                  const canPlayThis = type === 'soldier' ? canPlaySoldier : canPlayOther
                   return (
                     <motion.button
                       key={type}
-                      whileHover={canPlay ? { x: 2 } : {}}
-                      disabled={!canPlay}
+                      whileHover={canPlayThis ? { x: 2 } : {}}
+                      disabled={!canPlayThis}
                       onClick={() => {
                         if (type === 'monopoly') {
                           playDevCard(type)
@@ -168,10 +171,10 @@ export function DevCardMenu() {
                       }}
                       className="w-full text-left p-2.5 rounded-lg transition-all"
                       style={{
-                        background: canPlay ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${canPlay ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.05)'}`,
-                        opacity: canPlay ? 1 : 0.5,
-                        cursor: canPlay ? 'pointer' : 'not-allowed',
+                        background: canPlayThis ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${canPlayThis ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                        opacity: canPlayThis ? 1 : 0.5,
+                        cursor: canPlayThis ? 'pointer' : 'not-allowed',
                       }}
                     >
                       <div className="flex items-center gap-2">
@@ -193,10 +196,10 @@ export function DevCardMenu() {
                     <div className="text-xs text-white/40">Revealed automatically when you win</div>
                   </div>
                 )}
-                {!canPlay && game.hasRolled && game.devCardPlayedThisTurn && (
+                {game.devCardPlayedThisTurn && (
                   <p className="text-xs text-white/30 text-center">Already played a card this turn</p>
                 )}
-                {!canPlay && !game.hasRolled && (
+                {!game.hasRolled && !game.devCardPlayedThisTurn && (
                   <p className="text-xs text-white/30 text-center">Roll dice first (except Soldier)</p>
                 )}
               </div>

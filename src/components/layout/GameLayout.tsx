@@ -192,10 +192,10 @@ export function GameLayout() {
                 Roll Dice
               </motion.button>
 
-              {game.hasRolled && game.phase === 'playing' && (
+              {game.phase === 'playing' && (
                 <div className="flex gap-1.5">
-                  <div className="flex-1 min-w-0"><BuildMenu /></div>
-                  <div className="flex-1 min-w-0"><TradeMenu /></div>
+                  {game.hasRolled && <div className="flex-1 min-w-0"><BuildMenu /></div>}
+                  {game.hasRolled && <div className="flex-1 min-w-0"><TradeMenu /></div>}
                   <div className="flex-1 min-w-0"><DevCardMenu /></div>
                 </div>
               )}

@@ -3,7 +3,6 @@ import { getAIAction, getAIRobberTile, getAIDiscardSelection } from './aiPlayer'
 import { generateTiles, generateVerticesAndEdges, HEX_SIZE } from './hexGrid'
 import { createInitialPlayers, createDevCardDeck, assignPorts } from './gameLogic'
 import type { GameState } from '../types/game'
-import { EMPTY_RESOURCES } from '../types/game'
 import { BOARD_CENTER } from '../constants/colors'
 
 function makeAIGameState(overrides: Partial<GameState> = {}): GameState {
