@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { getAIAction, getAIRobberTile, getAIDiscardSelection } from '../utils/aiPlayer'
+import { totalResources } from '../utils/gameLogic'
 import type { ResourceType } from '../types/game'
 
 const AI_DELAY_MS = 800
@@ -20,6 +21,7 @@ export function useAIPlayer() {
   const clickTile = useGameStore(s => s.clickTile)
   const updateDiscardSelection = useGameStore(s => s.updateDiscardSelection)
   const confirmDiscard = useGameStore(s => s.confirmDiscard)
+  const respondTrade = useGameStore(s => s.respondTrade)
   const discardTarget = useGameStore(s => s.discardTarget)
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -56,6 +58,40 @@ export function useAIPlayer() {
         clickTile(tileId)
       }, AI_DELAY_MS)
       return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+    }
+
+    if (game.activeTrade && !game.activeTrade.toPlayerId) {
+      const aiResponders = game.playerOrder.filter(
+        pid => pid !== game.activeTrade!.fromPlayerId && game.players[pid].isAI
+      )
+      if (aiResponders.length > 0) {
+        timerRef.current = setTimeout(() => {
+          const trade = useGameStore.getState().game?.activeTrade
+          if (!trade) return
+
+          for (const aiId of aiResponders) {
+            const aiPlayer = game.players[aiId]
+            const canAffordRequest = (Object.entries(trade.requesting) as [ResourceType, number][])
+              .every(([r, amt]) => aiPlayer.resources[r] >= amt)
+
+            if (canAffordRequest) {
+              const gainValue = totalResources(trade.offering)
+              const loseValue = totalResources(trade.requesting)
+              if (gainValue >= loseValue) {
+                const store = useGameStore.getState()
+                if (store.game?.activeTrade) {
+                  store.game.activeTrade.toPlayerId = aiId
+                  store.respondTrade(true)
+                }
+                return
+              }
+            }
+          }
+
+          useGameStore.getState().respondTrade(false)
+        }, AI_DELAY_MS)
+        return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+      }
     }
 
     if (!currentPlayer.isAI) return
@@ -122,6 +158,6 @@ export function useAIPlayer() {
     discardTarget,
     rollDice, endTurn, buildRoute, buildOutpost, buildBase,
     buyDevCard, bankTrade, playDevCard, clickVertex, clickEdge, clickTile,
-    updateDiscardSelection, confirmDiscard,
+    updateDiscardSelection, confirmDiscard, respondTrade,
   ])
 }

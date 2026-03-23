@@ -13,6 +13,7 @@ import { DiceDisplay } from '../ui/DiceDisplay'
 import { DiscardModal } from '../game/DiscardModal'
 import { StealModal } from '../game/StealModal'
 import { WinScreen } from '../game/WinScreen'
+import { PlayerTradeMenu, TradeResponseBanner } from '../game/PlayerTradeMenu'
 
 const PHASE_LABELS: Record<string, string> = {
   setup: 'Initial Placement',
@@ -193,11 +194,14 @@ export function GameLayout() {
               </motion.button>
 
               {game.phase === 'playing' && (
-                <div className="flex gap-1.5">
-                  {game.hasRolled && <div className="flex-1 min-w-0"><BuildMenu /></div>}
-                  {game.hasRolled && <div className="flex-1 min-w-0"><TradeMenu /></div>}
-                  <div className="flex-1 min-w-0"><DevCardMenu /></div>
-                </div>
+                <>
+                  <div className="flex gap-1.5">
+                    {game.hasRolled && <div className="flex-1 min-w-0"><BuildMenu /></div>}
+                    {game.hasRolled && <div className="flex-1 min-w-0"><TradeMenu /></div>}
+                    <div className="flex-1 min-w-0"><DevCardMenu /></div>
+                  </div>
+                  <PlayerTradeMenu />
+                </>
               )}
 
               <motion.button
@@ -221,6 +225,7 @@ export function GameLayout() {
             </div>
           </div>
 
+          <TradeResponseBanner />
           <div className="flex-1 min-h-0 p-3">
             <div className="h-full">
               <GameLog />

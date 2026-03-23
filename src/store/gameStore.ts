@@ -58,6 +58,9 @@ interface GameStore {
   confirmYearOfPlenty: () => void
 
   bankTrade: (giving: ResourceType, receiving: ResourceType) => void
+  proposeTrade: (offering: Resources, requesting: Resources) => void
+  respondTrade: (accept: boolean) => void
+  cancelTrade: () => void
 
   moveRobber: (tileId: string) => void
   stealResource: (fromPlayerId: string) => void
@@ -578,6 +581,69 @@ export const useGameStore = create<GameStore>()(
       game.players[playerId].resources[receiving] += 1
 
       game.log.push(addLog(game, `${player.name} traded ${ratio} ${giving} for 1 ${receiving}`, playerId))
+    }),
+
+    proposeTrade: (offering, requesting) => set(s => {
+      if (!s.game) return
+      const game = s.game
+      if (!game.hasRolled) return
+      const playerId = game.playerOrder[game.currentPlayerIndex]
+
+      game.activeTrade = {
+        id: `trade-${Date.now()}`,
+        fromPlayerId: playerId,
+        toPlayerId: null,
+        offering,
+        requesting,
+        status: 'pending',
+      }
+      game.log.push(addLog(game, `${game.players[playerId].name} proposed a trade`, playerId))
+    }),
+
+    respondTrade: (accept) => set(s => {
+      if (!s.game) return
+      const game = s.game
+      if (!game.activeTrade) return
+
+      const trade = game.activeTrade
+      if (!accept) {
+        game.activeTrade = null
+        game.log.push(addLog(game, 'Trade declined'))
+        return
+      }
+
+      const responderId = trade.toPlayerId
+      if (!responderId) {
+        game.activeTrade = null
+        return
+      }
+
+      const from = game.players[trade.fromPlayerId]
+      const to = game.players[responderId]
+
+      const fromCanAfford = (Object.entries(trade.offering) as [ResourceType, number][])
+        .every(([r, amt]) => from.resources[r] >= amt)
+      const toCanAfford = (Object.entries(trade.requesting) as [ResourceType, number][])
+        .every(([r, amt]) => to.resources[r] >= amt)
+
+      if (!fromCanAfford || !toCanAfford) {
+        game.activeTrade = null
+        game.log.push(addLog(game, 'Trade failed: insufficient resources'))
+        return
+      }
+
+      game.players[trade.fromPlayerId].resources = subtractResources(from.resources, trade.offering)
+      game.players[trade.fromPlayerId].resources = addResources(game.players[trade.fromPlayerId].resources, trade.requesting)
+      game.players[responderId].resources = subtractResources(to.resources, trade.requesting)
+      game.players[responderId].resources = addResources(game.players[responderId].resources, trade.offering)
+
+      game.log.push(addLog(game, `Trade accepted between ${from.name} and ${to.name}`))
+      game.activeTrade = null
+    }),
+
+    cancelTrade: () => set(s => {
+      if (!s.game) return
+      s.game.activeTrade = null
     }),
 
     moveRobber: (tileId) => {
