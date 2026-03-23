@@ -1,9 +1,11 @@
 import { createServer } from 'http'
 import { readFileSync, existsSync } from 'fs'
-import { join, extname } from 'path'
+import { join, extname, dirname } from 'path'
+import { fileURLToPath } from 'url'
 
 const PORT = parseInt(process.env.PORT ?? '8080', 10)
-const DIST = join(import.meta.dirname, 'dist')
+const HERE = dirname(fileURLToPath(import.meta.url))
+const DIST = join(HERE, 'dist')
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',
