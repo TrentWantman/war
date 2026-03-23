@@ -8,9 +8,9 @@ export function cubeToPixel(coord: CubeCoord, size: number, center: Point): Poin
   return { x, y }
 }
 
-export function hexVertices(center: Point, size: number): Point[] {
+export function hexCorners(center: Point, size: number): Point[] {
   return Array.from({ length: 6 }, (_, i) => {
-    const angle = (Math.PI / 3) * i // 0°, 60°, 120°, 180°, 240°, 300°
+    const angle = (Math.PI / 3) * i
     return {
       x: center.x + size * Math.cos(angle),
       y: center.y + size * Math.sin(angle),
@@ -18,7 +18,6 @@ export function hexVertices(center: Point, size: number): Point[] {
   })
 }
 
-/** Standard Catan board layout: 5 rows of hexes (3-4-5-4-3) */
 export function standardBoardCoords(): CubeCoord[] {
   const coords: CubeCoord[] = []
   const layout = [3, 4, 5, 4, 3]
@@ -38,7 +37,6 @@ export function standardBoardCoords(): CubeCoord[] {
   return coords
 }
 
-/** Terrain distribution: 4 food, 4 supplies, 4 tools, 3 weapons, 3 ammo, 1 desert */
 const TERRAIN_DISTRIBUTION: TerrainType[] = [
   'food', 'food', 'food', 'food',
   'supplies', 'supplies', 'supplies', 'supplies',
@@ -48,7 +46,6 @@ const TERRAIN_DISTRIBUTION: TerrainType[] = [
   'desert',
 ]
 
-/** Standard Catan number tokens (placed in spiral from outside-in) */
 const NUMBER_TOKENS = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
 
 export function shuffle<T>(arr: T[]): T[] {
@@ -58,6 +55,14 @@ export function shuffle<T>(arr: T[]): T[] {
     ;[a[i], a[j]] = [a[j], a[i]]
   }
   return a
+}
+
+export function coordToId(coord: CubeCoord): string {
+  return `${coord.q},${coord.r},${coord.s}`
+}
+
+export function tileCenter(tile: HexTile, size: number, boardCenter: Point): Point {
+  return cubeToPixel(tile.coord, size, boardCenter)
 }
 
 export function generateTiles(): Record<string, HexTile> {
@@ -77,31 +82,18 @@ export function generateTiles(): Record<string, HexTile> {
 
   coords.forEach((coord, i) => {
     const id = coordToId(coord)
-    const isDesert = terrains[i] === 'desert'
     tiles[id] = {
       id,
       coord,
       terrain: terrains[i],
       number: numbers[i],
-      hasRobber: isDesert,
+      hasRobber: terrains[i] === 'desert',
     }
   })
 
   return tiles
 }
 
-export function coordToId(coord: CubeCoord): string {
-  return `${coord.q},${coord.r},${coord.s}`
-}
-
-export function tileCenter(tile: HexTile, size: number, boardCenter: Point): Point {
-  return cubeToPixel(tile.coord, size, boardCenter)
-}
-
-/**
- * Generate unique vertex IDs by rounding and deduplicating pixel positions.
- * Each hex has 6 corners; adjacent hexes share corners.
- */
 export function generateVerticesAndEdges(
   tiles: Record<string, HexTile>,
   size: number,
@@ -109,7 +101,6 @@ export function generateVerticesAndEdges(
 ): { vertices: Record<string, Vertex>; edges: Record<string, Edge> } {
   const vertices: Record<string, Vertex> = {}
   const edges: Record<string, Edge> = {}
-
   const posToVertexId: Record<string, string> = {}
   const round = (n: number) => Math.round(n * 10) / 10
 
@@ -138,9 +129,8 @@ export function generateVerticesAndEdges(
 
   for (const tile of Object.values(tiles)) {
     const center = tileCenter(tile, size, boardCenter)
-    const corners = hexVertices(center, size)
-    const vIds = corners.map(pos => getOrCreateVertex(pos, tile.id))
-    tileVertexIds[tile.id] = vIds
+    const corners = hexCorners(center, size)
+    tileVertexIds[tile.id] = corners.map(pos => getOrCreateVertex(pos, tile.id))
   }
 
   const edgeKeySet = new Set<string>()
@@ -153,7 +143,7 @@ export function generateVerticesAndEdges(
       const key = [a, b].sort().join('-')
       if (!edgeKeySet.has(key)) {
         edgeKeySet.add(key)
-        const id = `e${edges ? Object.keys(edges).length : 0}`
+        const id = `e${Object.keys(edges).length}`
         const pa = vertices[a].position
         const pb = vertices[b].position
         edges[id] = {
@@ -187,21 +177,4 @@ export function getAdjacentVertices(
 
 export function getHexVertices(hexId: string, vertices: Record<string, Vertex>): Vertex[] {
   return Object.values(vertices).filter(v => v.hexIds.includes(hexId))
-}
-
-export const TERRAIN_CONFIG: Record<string, { label: string; color: string; darkColor: string; resource?: string }> = {
-  food:     { label: 'Fields',    color: '#f59e0b', darkColor: '#d97706', resource: 'food' },
-  weapons:  { label: 'Quarries',  color: '#ef4444', darkColor: '#dc2626', resource: 'weapons' },
-  ammo:     { label: 'Mountains', color: '#6b7280', darkColor: '#4b5563', resource: 'ammo' },
-  tools:    { label: 'Forests',   color: '#92400e', darkColor: '#78350f', resource: 'tools' },
-  supplies: { label: 'Pastures',  color: '#86efac', darkColor: '#4ade80', resource: 'supplies' },
-  desert:   { label: 'Desert',    color: '#d2b48c', darkColor: '#c4a882' },
-}
-
-export const RESOURCE_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
-  food:     { label: 'Food',     color: '#f59e0b', bgColor: 'rgba(245,158,11,0.15)',  icon: '🌾' },
-  weapons:  { label: 'Weapons',  color: '#ef4444', bgColor: 'rgba(239,68,68,0.15)',   icon: '⚔️' },
-  ammo:     { label: 'Ammo',     color: '#9ca3af', bgColor: 'rgba(156,163,175,0.15)', icon: '💣' },
-  tools:    { label: 'Tools',    color: '#b45309', bgColor: 'rgba(180,83,9,0.15)',    icon: '🔧' },
-  supplies: { label: 'Supplies', color: '#86efac', bgColor: 'rgba(134,239,172,0.15)', icon: '📦' },
 }

@@ -4,9 +4,7 @@ import { ArrowLeftRight, X } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { getTradeRatio } from '../../utils/gameLogic'
 import type { ResourceType } from '../../types/game'
-import { RESOURCE_CONFIG } from '../../utils/hexGrid'
-
-const RESOURCE_TYPES: ResourceType[] = ['food', 'weapons', 'ammo', 'tools', 'supplies']
+import { RESOURCE_LABELS, RESOURCE_COLORS, RESOURCE_BG_COLORS, RESOURCE_SHORT_LABELS, RESOURCE_TYPES } from '../../constants/resources'
 
 export function TradeMenu() {
   const game = useGameStore(s => s.game)
@@ -60,7 +58,6 @@ export function TradeMenu() {
                 <label className="text-xs text-white/50 mb-1.5 block">You Give ({ratio}x)</label>
                 <div className="grid grid-cols-5 gap-1">
                   {RESOURCE_TYPES.map(r => {
-                    const cfg = RESOURCE_CONFIG[r]
                     const myRatio = getTradeRatio(player, r)
                     const affordable = player.resources[r] >= myRatio
                     return (
@@ -69,13 +66,15 @@ export function TradeMenu() {
                         onClick={() => setGiving(r)}
                         className="flex flex-col items-center p-1.5 rounded-lg transition-all"
                         style={{
-                          background: giving === r ? cfg.bgColor : 'rgba(255,255,255,0.03)',
-                          border: `1px solid ${giving === r ? cfg.color + '80' : 'rgba(255,255,255,0.08)'}`,
+                          background: giving === r ? RESOURCE_BG_COLORS[r] : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${giving === r ? RESOURCE_COLORS[r] + '80' : 'rgba(255,255,255,0.08)'}`,
                           opacity: affordable ? 1 : 0.4,
                         }}
                       >
-                        <span className="text-lg">{cfg.icon}</span>
-                        <span className="text-xs font-bold" style={{ color: cfg.color }}>
+                        <span className="text-xs font-bold" style={{ color: RESOURCE_COLORS[r] }}>
+                          {RESOURCE_SHORT_LABELS[r]}
+                        </span>
+                        <span className="text-xs font-bold" style={{ color: RESOURCE_COLORS[r] }}>
                           {player.resources[r]}
                         </span>
                       </button>
@@ -91,33 +90,29 @@ export function TradeMenu() {
               <div>
                 <label className="text-xs text-white/50 mb-1.5 block">You Receive (1x)</label>
                 <div className="grid grid-cols-5 gap-1">
-                  {RESOURCE_TYPES.map(r => {
-                    const cfg = RESOURCE_CONFIG[r]
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => setReceiving(r)}
-                        disabled={r === giving}
-                        className="flex flex-col items-center p-1.5 rounded-lg transition-all"
-                        style={{
-                          background: receiving === r ? cfg.bgColor : 'rgba(255,255,255,0.03)',
-                          border: `1px solid ${receiving === r ? cfg.color + '80' : 'rgba(255,255,255,0.08)'}`,
-                          opacity: r === giving ? 0.3 : 1,
-                          cursor: r === giving ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        <span className="text-lg">{cfg.icon}</span>
-                        <span className="text-xs" style={{ color: cfg.color }}>
-                          {RESOURCE_CONFIG[r].label.slice(0, 3)}
-                        </span>
-                      </button>
-                    )
-                  })}
+                  {RESOURCE_TYPES.map(r => (
+                    <button
+                      key={r}
+                      onClick={() => setReceiving(r)}
+                      disabled={r === giving}
+                      className="flex flex-col items-center p-1.5 rounded-lg transition-all"
+                      style={{
+                        background: receiving === r ? RESOURCE_BG_COLORS[r] : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${receiving === r ? RESOURCE_COLORS[r] + '80' : 'rgba(255,255,255,0.08)'}`,
+                        opacity: r === giving ? 0.3 : 1,
+                        cursor: r === giving ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <span className="text-xs font-bold" style={{ color: RESOURCE_COLORS[r] }}>
+                        {RESOURCE_SHORT_LABELS[r]}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <button
-                onClick={() => { if (canTrade) { bankTrade(giving, receiving); toggleTradeMenu(false) } }}
+                onClick={() => { if (canTrade) bankTrade(giving, receiving) }}
                 disabled={!canTrade}
                 className="w-full py-2 rounded-lg font-bold text-sm transition-all"
                 style={{
@@ -128,8 +123,8 @@ export function TradeMenu() {
                 }}
               >
                 {canTrade
-                  ? `Trade ${ratio} ${RESOURCE_CONFIG[giving].label} → 1 ${RESOURCE_CONFIG[receiving].label}`
-                  : `Need ${ratio} ${RESOURCE_CONFIG[giving].label}`}
+                  ? `Trade ${ratio} ${RESOURCE_LABELS[giving]} for 1 ${RESOURCE_LABELS[receiving]}`
+                  : `Need ${ratio} ${RESOURCE_LABELS[giving]}`}
               </button>
 
               {player.ports.length > 0 && (

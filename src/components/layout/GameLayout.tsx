@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Dice5, ChevronRight, AlertTriangle, Target } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useAIPlayer } from '../../hooks/useAIPlayer'
+import { PLAYER_HEX_COLORS } from '../../constants/colors'
 import { HexBoard } from '../board/HexBoard'
 import { PlayerPanel } from '../game/PlayerPanel'
 import { BuildMenu } from '../game/BuildMenu'
@@ -97,7 +98,7 @@ export function GameLayout() {
             <div
               className="w-2 h-2 rounded-full"
               style={{
-                background: { red: '#ef4444', blue: '#3b82f6', green: '#22c55e', orange: '#f97316' }[currentPlayer.color] ?? '#fff',
+                background: PLAYER_HEX_COLORS[currentPlayer.color],
               }}
             />
             {currentPlayer.name}'s turn
@@ -126,7 +127,6 @@ export function GameLayout() {
                 className="px-2 py-1.5 rounded text-xs flex items-center gap-1.5"
                 style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid #3b82f620', color: '#93c5fd' }}
               >
-                <span>🛣️</span>
                 <span className="font-medium">Longest Road</span>
                 <span className="ml-auto text-blue-400/60">({game.longestRoadLength})</span>
               </div>
@@ -136,7 +136,6 @@ export function GameLayout() {
                 className="px-2 py-1.5 rounded text-xs flex items-center gap-1.5"
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid #ef444420', color: '#fca5a5' }}
               >
-                <span>⚔️</span>
                 <span className="font-medium">Largest Force</span>
                 <span className="ml-auto text-red-400/60">({game.largestArmySize})</span>
               </div>

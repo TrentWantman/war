@@ -1,11 +1,8 @@
 import { motion } from 'framer-motion'
 import type { Player, GameState } from '../../types/game'
+import { PLAYER_HEX_COLORS } from '../../constants/colors'
 import { ResourceDisplay } from '../ui/ResourceDisplay'
 import { calculateVP } from '../../utils/gameLogic'
-
-const PLAYER_COLORS: Record<string, string> = {
-  red: '#ef4444', blue: '#3b82f6', green: '#22c55e', orange: '#f97316',
-}
 
 interface PlayerPanelProps {
   player: Player
@@ -15,7 +12,7 @@ interface PlayerPanelProps {
 
 export function PlayerPanel({ player, isCurrentPlayer, state }: PlayerPanelProps) {
   const vp = calculateVP(state, player.id)
-  const color = PLAYER_COLORS[player.color]
+  const color = PLAYER_HEX_COLORS[player.color]
 
   return (
     <motion.div
@@ -54,7 +51,7 @@ export function PlayerPanel({ player, isCurrentPlayer, state }: PlayerPanelProps
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-yellow-400 font-bold text-sm">⭐ {vp}</span>
+          <span className="text-yellow-400 font-bold text-sm">VP {vp}</span>
           {vp >= 10 && <span className="text-yellow-300 text-xs font-bold animate-pulse">WIN!</span>}
         </div>
       </div>
@@ -63,16 +60,16 @@ export function PlayerPanel({ player, isCurrentPlayer, state }: PlayerPanelProps
 
       <div className="flex items-center gap-3 mt-2 text-xs text-white/50">
         {player.devCards.length > 0 && (
-          <span title="Development cards">🃏 {player.devCards.length}</span>
+          <span title="Development cards">Cards: {player.devCards.length}</span>
         )}
         {player.soldiersPlayed > 0 && (
-          <span title="Soldiers played">⚔️ {player.soldiersPlayed}</span>
+          <span title="Soldiers played">Soldiers: {player.soldiersPlayed}</span>
         )}
         {state.longestRoadPlayerId === player.id && (
-          <span title="Longest Supply Line" className="text-blue-400">🛣️ Longest</span>
+          <span title="Longest Supply Line" className="text-blue-400">Longest Road</span>
         )}
         {state.largestArmyPlayerId === player.id && (
-          <span title="Largest Force" className="text-red-400">🏆 Largest Force</span>
+          <span title="Largest Force" className="text-red-400">Largest Force</span>
         )}
       </div>
     </motion.div>

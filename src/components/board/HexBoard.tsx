@@ -1,16 +1,17 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useShallow } from 'zustand/react/shallow'
-import { HEX_SIZE, hexVertices, tileCenter, TERRAIN_CONFIG } from '../../utils/hexGrid'
-import type { HexTile, Vertex, Edge, Point } from '../../types/game'
+import { HEX_SIZE, hexCorners, tileCenter } from '../../utils/hexGrid'
+import { PLAYER_HEX_COLORS, BOARD_CENTER } from '../../constants/colors'
+import { TERRAIN_COLORS } from '../../constants/resources'
+import type { HexTile, Vertex, Edge, Point, PlayerColor } from '../../types/game'
 
-const BOARD_CENTER: Point = { x: 350, y: 310 }
-
-const PLAYER_COLORS: Record<string, string> = {
-  red:    '#ef4444',
-  blue:   '#3b82f6',
-  green:  '#22c55e',
-  orange: '#f97316',
+function buildPlayerColorMap(players: Record<string, { color: PlayerColor }>): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const [id, player] of Object.entries(players)) {
+    map[id] = PLAYER_HEX_COLORS[player.color]
+  }
+  return map
 }
 
 function drawHex(
@@ -21,25 +22,32 @@ function drawHex(
   isHovered: boolean,
   isRobberTarget: boolean
 ) {
-  const verts = hexVertices(center, size)
-  const config = TERRAIN_CONFIG[tile.terrain]
+  const verts = hexCorners(center, size)
+  const colors = TERRAIN_COLORS[tile.terrain]
 
   ctx.beginPath()
   ctx.moveTo(verts[0].x, verts[0].y)
   for (let i = 1; i < 6; i++) ctx.lineTo(verts[i].x, verts[i].y)
   ctx.closePath()
 
-  // Fill
-  ctx.fillStyle = config.color
-  if (isRobberTarget) {
-    ctx.fillStyle = config.darkColor
-  }
+  ctx.fillStyle = isRobberTarget ? colors.dark : colors.fill
   ctx.fill()
 
-  // Border
   ctx.strokeStyle = isHovered ? '#ffffff' : 'rgba(0,0,0,0.4)'
   ctx.lineWidth = isHovered ? 2.5 : 1.5
   ctx.stroke()
+}
+
+function drawTerrainLabel(ctx: CanvasRenderingContext2D, center: Point, terrain: string) {
+  const labels: Record<string, string> = {
+    food: 'FLD', weapons: 'QRY', ammo: 'MTN', tools: 'FOR', supplies: 'PST', desert: 'DST',
+  }
+  const label = labels[terrain] ?? ''
+  ctx.font = 'bold 10px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = 'rgba(0,0,0,0.5)'
+  ctx.fillText(label, center.x, center.y + (terrain === 'desert' ? 0 : -22))
 }
 
 function drawNumberToken(
@@ -54,10 +62,10 @@ function drawNumberToken(
     ctx.fillStyle = 'rgba(0,0,0,0.75)'
     ctx.fill()
     ctx.fillStyle = '#ef4444'
-    ctx.font = 'bold 18px sans-serif'
+    ctx.font = 'bold 14px sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('☠', center.x, center.y)
+    ctx.fillText('R', center.x, center.y)
     return
   }
   if (!number) return
@@ -91,17 +99,6 @@ function drawNumberToken(
   }
 }
 
-function drawTerrainIcon(ctx: CanvasRenderingContext2D, center: Point, terrain: string) {
-  const icons: Record<string, string> = {
-    food: '🌾', weapons: '⚔️', ammo: '💣', tools: '🌲', supplies: '🐑', desert: '🏜️',
-  }
-  const icon = icons[terrain] ?? ''
-  ctx.font = '22px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(icon, center.x, center.y + (terrain === 'desert' ? 0 : -22))
-}
-
 function drawVertex(
   ctx: CanvasRenderingContext2D,
   vertex: Vertex,
@@ -124,14 +121,12 @@ function drawVertex(
       ctx.strokeStyle = '#fff'
       ctx.lineWidth = 2
       ctx.stroke()
-      // House icon
       ctx.fillStyle = '#fff'
       ctx.font = 'bold 9px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText('▲', pos.x, pos.y)
+      ctx.fillText('O', pos.x, pos.y)
     } else {
-      // Base (city)
       ctx.beginPath()
       const s = 10
       ctx.rect(pos.x - s, pos.y - s, s * 2, s * 2)
@@ -144,12 +139,11 @@ function drawVertex(
       ctx.font = 'bold 9px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText('★', pos.x, pos.y)
+      ctx.fillText('B', pos.x, pos.y)
     }
     return
   }
 
-  // Show placement indicator
   const showIndicator =
     (phase === 'setup' && setupSubPhase === 'place_outpost') ||
     (phase === 'playing')
@@ -188,7 +182,6 @@ function drawEdge(
     ctx.lineWidth = 5
     ctx.lineCap = 'round'
     ctx.stroke()
-    // Outline
     ctx.beginPath()
     ctx.moveTo(va.position.x, va.position.y)
     ctx.lineTo(vb.position.x, vb.position.y)
@@ -214,16 +207,13 @@ function drawEdge(
   }
 }
 
-function drawPort(
-  ctx: CanvasRenderingContext2D,
-  vertex: Vertex
-) {
+function drawPort(ctx: CanvasRenderingContext2D, vertex: Vertex) {
   if (!vertex.portType) return
   const { position: pos } = vertex
 
   const portLabels: Record<string, string> = {
-    food: '🌾2:1', weapons: '⚔️2:1', ammo: '💣2:1',
-    tools: '🔧2:1', supplies: '📦2:1', generic: '?3:1',
+    food: 'F 2:1', weapons: 'W 2:1', ammo: 'A 2:1',
+    tools: 'T 2:1', supplies: 'S 2:1', generic: '? 3:1',
   }
   const label = portLabels[vertex.portType]
   if (!label) return
@@ -243,12 +233,14 @@ function drawPort(
   ctx.fillText(label, pos.x, pos.y)
 }
 
-function getPlayerColorMap(state: { players: Record<string, { color: string }> }): Record<string, string> {
-  const map: Record<string, string> = {}
-  for (const [id, player] of Object.entries(state.players)) {
-    map[id] = PLAYER_COLORS[player.color] ?? '#888'
-  }
-  return map
+function pointToSegmentDist(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const len2 = dx * dx + dy * dy
+  if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2
+  t = Math.max(0, Math.min(1, t))
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
 }
 
 interface HexBoardProps {
@@ -264,7 +256,6 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
   const validOutposts = useGameStore(useShallow(s => s.getValidOutpostVertices()))
   const validRoutes = useGameStore(useShallow(s => s.getValidRouteEdges()))
   const validBases = useGameStore(useShallow(s => s.getValidBaseVertices()))
-  const showBuildMenu = useGameStore(s => s.showBuildMenu)
   const clickVertex = useGameStore(s => s.clickVertex)
   const clickEdge = useGameStore(s => s.clickEdge)
   const clickTile = useGameStore(s => s.clickTile)
@@ -285,7 +276,7 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
     ctx.clearRect(0, 0, width, height)
 
     const { tiles, vertices, edges, phase, setupSubPhase } = game
-    const playerColorMap = getPlayerColorMap(game)
+    const playerColorMap = buildPlayerColorMap(game.players)
 
     ctx.fillStyle = '#0a192f'
     ctx.fillRect(0, 0, width, height)
@@ -293,13 +284,13 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
     for (const tile of Object.values(tiles)) {
       const center = tileCenter(tile, HEX_SIZE, BOARD_CENTER)
       const isHovered = localHoverId?.type === 'tile' && localHoverId.id === tile.id
-      const isRobberTarget = phase === 'robber' && localHoverId?.type === 'tile' && localHoverId.id === tile.id
+      const isRobberTarget = phase === 'robber' && isHovered
       drawHex(ctx, center, HEX_SIZE, tile, isHovered, isRobberTarget)
     }
 
     for (const tile of Object.values(tiles)) {
       const center = tileCenter(tile, HEX_SIZE, BOARD_CENTER)
-      drawTerrainIcon(ctx, center, tile.terrain)
+      drawTerrainLabel(ctx, center, tile.terrain)
       drawNumberToken(ctx, center, tile.number, tile.hasRobber)
     }
 
@@ -321,7 +312,7 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
       const isHovered = localHoverId?.type === 'vertex' && localHoverId.id === vertex.id
       drawVertex(ctx, vertex, isValid, isHovered, phase, setupSubPhase, playerColorMap)
     }
-  }, [game, localHoverId, validOutposts, validRoutes, validBases, width, height, showBuildMenu])
+  }, [game, localHoverId, validOutposts, validRoutes, validBases, width, height])
 
   useEffect(() => { draw() }, [draw])
 
@@ -336,7 +327,6 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
 
     const { vertices, edges, tiles, phase } = game
 
-    // Robber mode: test tiles
     if (phase === 'robber') {
       for (const tile of Object.values(tiles)) {
         const center = tileCenter(tile, HEX_SIZE, BOARD_CENTER)
@@ -349,9 +339,8 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
       return null
     }
 
-    // Test vertices first (higher priority, smaller targets)
-    const { phase: p, setupSubPhase } = game
-    const showVertices = (p === 'setup' && setupSubPhase === 'place_outpost') || p === 'playing'
+    const { setupSubPhase } = game
+    const showVertices = (phase === 'setup' && setupSubPhase === 'place_outpost') || phase === 'playing'
     if (showVertices) {
       for (const vertex of Object.values(vertices)) {
         const dx = x - vertex.position.x
@@ -362,17 +351,13 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
       }
     }
 
-    const showEdges = (p === 'setup' && setupSubPhase === 'place_route') || p === 'playing' || p === 'road_building'
+    const showEdges = (phase === 'setup' && setupSubPhase === 'place_route') || phase === 'playing' || phase === 'road_building'
     if (showEdges) {
       for (const edge of Object.values(edges)) {
         const va = vertices[edge.vertexIds[0]]
         const vb = vertices[edge.vertexIds[1]]
         if (!va || !vb) continue
-        const dist = pointToSegmentDist(
-          { x, y },
-          va.position,
-          vb.position
-        )
+        const dist = pointToSegmentDist({ x, y }, va.position, vb.position)
         if (dist < 8) {
           return { type: 'edge' as const, id: edge.id }
         }
@@ -412,14 +397,4 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
       className="rounded-xl border border-white/10 shadow-2xl"
     />
   )
-}
-
-function pointToSegmentDist(p: Point, a: Point, b: Point): number {
-  const dx = b.x - a.x
-  const dy = b.y - a.y
-  const len2 = dx * dx + dy * dy
-  if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y)
-  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2
-  t = Math.max(0, Math.min(1, t))
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
 }

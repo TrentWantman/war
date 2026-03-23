@@ -1,6 +1,6 @@
 import type {
   GameState, Player, Resources, ResourceType, DevCardType,
-  Vertex, Edge, HexTile, TerrainType, PortType, GameLog,
+  Vertex, Edge, HexTile, TerrainType, PortType, GameLog, PlayerColor,
 } from '../types/game'
 import { EMPTY_RESOURCES } from '../types/game'
 import {
@@ -42,10 +42,10 @@ export function addResources(a: Resources, b: Resources): Resources {
 }
 
 export const COSTS = {
-  route:     { ...EMPTY_RESOURCES, tools: 1, supplies: 1 },
-  outpost:   { ...EMPTY_RESOURCES, tools: 1, supplies: 1, food: 1, weapons: 1 },
-  base:      { ...EMPTY_RESOURCES, food: 2, ammo: 3 },
-  devCard:   { ...EMPTY_RESOURCES, supplies: 1, food: 1, ammo: 1 },
+  route: { ...EMPTY_RESOURCES, tools: 1, supplies: 1 },
+  outpost: { ...EMPTY_RESOURCES, tools: 1, supplies: 1, food: 1, weapons: 1 },
+  base: { ...EMPTY_RESOURCES, food: 2, ammo: 3 },
+  devCard: { ...EMPTY_RESOURCES, supplies: 1, food: 1, ammo: 1 },
 } as const
 
 export function calculateVP(state: GameState, playerId: string): number {
@@ -66,7 +66,6 @@ export function calculateVP(state: GameState, playerId: string): number {
   return vp
 }
 
-/** DFS to find longest continuous road for a player */
 export function calculateLongestRoad(
   playerId: string,
   vertices: Record<string, Vertex>,
@@ -104,7 +103,6 @@ function dfsRoad(
   for (const edge of connectedEdges) {
     if (visited.has(edge.id)) continue
 
-    // Road is broken if an opponent has a building at this vertex
     const vertex = vertices[vertexId]
     if (vertex.building && vertex.building.playerId !== playerId && fromEdgeId !== null) {
       continue
@@ -130,16 +128,13 @@ export function canPlaceOutpost(
   if (!vertex) return false
   if (vertex.building) return false
 
-  // Distance rule: no adjacent settlements
   const adjacent = getAdjacentVertices(vertexId, state.edges)
   for (const adjId of adjacent) {
     if (state.vertices[adjId]?.building) return false
   }
 
-  // During setup: no road connection needed
   if (isSetup) return true
 
-  // Normal play: must be connected to player's road
   const adjEdges = getVertexEdges(vertexId, state.edges)
   return adjEdges.some(e => e.road?.playerId === playerId)
 }
@@ -165,16 +160,13 @@ export function canPlaceRoad(
   if (!edge) return false
   if (edge.road) return false
 
-  // During setup: must connect to the just-placed outpost
   if (isSetup && setupVertexId) {
     return edge.vertexIds.includes(setupVertexId)
   }
 
-  // Normal play: must connect to player's existing road or building
   for (const vId of edge.vertexIds) {
     const vertex = state.vertices[vId]
     if (vertex.building?.playerId === playerId) return true
-    // Connected to own road, not blocked by opponent building
     const adjEdges = getVertexEdges(vId, state.edges)
     const hasOwnRoad = adjEdges.some(e => e.id !== edgeId && e.road?.playerId === playerId)
     const blockedByOpponent = vertex.building && vertex.building.playerId !== playerId
@@ -210,8 +202,8 @@ export function produceResources(
     const resource = TERRAIN_RESOURCE[tile.terrain]
     if (!resource) continue
 
-    const hexVertices = getHexVertices(tile.id, state.vertices)
-    for (const vertex of hexVertices) {
+    const hexVerts = getHexVertices(tile.id, state.vertices)
+    for (const vertex of hexVerts) {
       if (!vertex.building) continue
       const { playerId, type } = vertex.building
       const amount = type === 'base' ? 2 : 1
@@ -222,10 +214,7 @@ export function produceResources(
   return production
 }
 
-export function getTradeRatio(
-  player: Player,
-  resource: ResourceType
-): number {
+export function getTradeRatio(player: Player, resource: ResourceType): number {
   if (player.ports.includes(resource as PortType)) return 2
   if (player.ports.includes('generic')) return 3
   return 4
@@ -242,8 +231,9 @@ export function createDevCardDeck(): DevCardType[] {
   return shuffle(deck)
 }
 
-export function createInitialPlayers(playerConfigs: Array<{ name: string; color: string; isAI: boolean }>): Record<string, Player> {
-  const colors = ['red', 'blue', 'green', 'orange'] as const
+export function createInitialPlayers(
+  playerConfigs: Array<{ name: string; color: PlayerColor; isAI: boolean }>
+): Record<string, Player> {
   const players: Record<string, Player> = {}
 
   playerConfigs.forEach((config, i) => {
@@ -251,7 +241,7 @@ export function createInitialPlayers(playerConfigs: Array<{ name: string; color:
     players[id] = {
       id,
       name: config.name,
-      color: colors[i],
+      color: config.color,
       resources: { ...EMPTY_RESOURCES },
       devCards: [],
       devCardsPlayedThisTurn: 0,
@@ -267,7 +257,6 @@ export function createInitialPlayers(playerConfigs: Array<{ name: string; color:
   return players
 }
 
-/** Assign ports to vertices after board generation */
 export function assignPorts(
   vertices: Record<string, Vertex>,
   _edges: Record<string, Edge>,

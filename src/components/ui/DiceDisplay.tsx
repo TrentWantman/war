@@ -6,8 +6,10 @@ interface DiceDisplayProps {
   rolling?: boolean
 }
 
-const dieFaces: Record<number, string> = {
-  1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅',
+function DieFace({ value }: { value: number }) {
+  return (
+    <span className="text-2xl font-black text-white select-none">{value}</span>
+  )
 }
 
 function Die({ value, rolling }: { value: number; rolling?: boolean }) {
@@ -15,14 +17,14 @@ function Die({ value, rolling }: { value: number; rolling?: boolean }) {
     <motion.div
       animate={rolling ? { rotate: [0, 360], scale: [1, 1.2, 1] } : {}}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="w-12 h-12 rounded-lg flex items-center justify-center text-3xl select-none"
+      className="w-12 h-12 rounded-lg flex items-center justify-center select-none"
       style={{
         background: 'linear-gradient(135deg, #2d3748 0%, #1a202c 100%)',
         border: '2px solid rgba(255,255,255,0.2)',
         boxShadow: '0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
       }}
     >
-      {dieFaces[value] ?? '🎲'}
+      <DieFace value={value} />
     </motion.div>
   )
 }

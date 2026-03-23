@@ -32,7 +32,6 @@ export interface HexTile {
   id: string
   coord: CubeCoord
   terrain: TerrainType
-  /** Number token (2-12), null for desert */
   number: number | null
   hasRobber: boolean
 }
@@ -47,17 +46,14 @@ export interface Port {
   edgeIndex: number
 }
 
-/** Vertex = intersection of 3 hexes = potential settlement/city location */
 export interface Vertex {
   id: string
-  /** Up to 3 adjacent hex IDs */
   hexIds: string[]
   building: Building | null
   portType: PortType | null
   position: Point
 }
 
-/** Edge = connection between 2 vertices = potential road location */
 export interface Edge {
   id: string
   vertexIds: [string, string]
@@ -86,11 +82,8 @@ export interface Player {
   resources: Resources
   devCards: DevCardType[]
   devCardsPlayedThisTurn: number
-  /** Total soldiers played (for Largest Force) */
   soldiersPlayed: number
-  /** Victory points visible to all players (excludes hidden VP cards) */
   publicVP: number
-  /** Hidden VP from victory point dev cards */
   hiddenVP: number
   ports: PortType[]
   isAI: boolean
@@ -104,20 +97,14 @@ export type DevCardType =
   | 'monopoly'
   | 'victory_point'
 
-export interface DevCard {
-  type: DevCardType
-  /** Which turn it was drawn (can't play same turn drawn) */
-  drawnOnTurn: number
-}
-
 export type GamePhase =
   | 'lobby'
-  | 'setup'         // Initial placement
-  | 'playing'       // Main game
-  | 'robber'        // Moving robber after 7
-  | 'discard'       // Discarding resources after 7 with 8+ cards
-  | 'stealing'      // Choosing who to steal from
-  | 'road_building' // Free road placement (dev card)
+  | 'setup'
+  | 'playing'
+  | 'robber'
+  | 'discard'
+  | 'stealing'
+  | 'road_building'
   | 'game_over'
 
 export type SetupSubPhase = 'place_outpost' | 'place_route'
@@ -152,7 +139,6 @@ export interface GameState {
   playerOrder: string[]
   players: Record<string, Player>
   currentPlayerIndex: number
-  /** 1 or 2; second round is reverse order */
   setupRound: 1 | 2
   tiles: Record<string, HexTile>
   vertices: Record<string, Vertex>
@@ -163,18 +149,13 @@ export interface GameState {
   hasRolled: boolean
   devCardPlayedThisTurn: boolean
   activeTrade: TradeOffer | null
-  /** Player with Longest Supply Line (5+ roads) */
   longestRoadPlayerId: string | null
   longestRoadLength: number
-  /** Player with Largest Force (3+ soldiers) */
   largestArmyPlayerId: string | null
   largestArmySize: number
   turn: number
   winner: string | null
   log: GameLog[]
-  /** How many free roads remain from a road_building dev card */
   freeRoadsRemaining: number
-  yearOfPlentyRemaining: number
-  monopolyResource: ResourceType | null
   robberTileId: string
 }

@@ -1,9 +1,6 @@
 import { motion } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
-
-const PLAYER_COLORS: Record<string, string> = {
-  red: '#ef4444', blue: '#3b82f6', green: '#22c55e', orange: '#f97316',
-}
+import { PLAYER_HEX_COLORS } from '../../constants/colors'
 
 export function StealModal() {
   const game = useGameStore(s => s.game)
@@ -15,7 +12,6 @@ export function StealModal() {
   const robberTile = game.tiles[game.robberTileId]
   if (!robberTile) return null
 
-  // Find adjacent players to steal from
   const stealTargets = new Set<string>()
   Object.values(game.vertices).forEach(v => {
     if (v.hexIds.includes(robberTile.id) && v.building && v.building.playerId !== currentPlayerId) {
@@ -45,7 +41,7 @@ export function StealModal() {
         <div className="space-y-2">
           {targets.map(pid => {
             const player = game.players[pid]
-            const color = PLAYER_COLORS[player.color]
+            const color = PLAYER_HEX_COLORS[player.color]
             const total = Object.values(player.resources).reduce((a, b) => a + b, 0)
             return (
               <motion.button

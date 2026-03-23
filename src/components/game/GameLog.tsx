@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import { PLAYER_HEX_COLORS } from '../../constants/colors'
 
 export function GameLog() {
   const game = useGameStore(s => s.game)
@@ -13,10 +14,7 @@ export function GameLog() {
 
   const playerColors: Record<string, string> = {}
   for (const [id, player] of Object.entries(game.players)) {
-    const colors: Record<string, string> = {
-      red: '#ef4444', blue: '#3b82f6', green: '#22c55e', orange: '#f97316',
-    }
-    playerColors[id] = colors[player.color] ?? '#888'
+    playerColors[id] = PLAYER_HEX_COLORS[player.color]
   }
 
   return (

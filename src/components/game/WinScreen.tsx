@@ -1,10 +1,7 @@
 import { motion } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 import { calculateVP } from '../../utils/gameLogic'
-
-const PLAYER_COLORS: Record<string, string> = {
-  red: '#ef4444', blue: '#3b82f6', green: '#22c55e', orange: '#f97316',
-}
+import { PLAYER_HEX_COLORS } from '../../constants/colors'
 
 export function WinScreen() {
   const game = useGameStore(s => s.game)
@@ -13,7 +10,7 @@ export function WinScreen() {
   if (!game || !game.winner) return null
 
   const winner = game.players[game.winner]
-  const color = PLAYER_COLORS[winner.color]
+  const color = PLAYER_HEX_COLORS[winner.color]
 
   const standings = game.playerOrder
     .map(id => ({ player: game.players[id], vp: calculateVP(game, id) }))
@@ -37,21 +34,14 @@ export function WinScreen() {
           boxShadow: `0 0 60px ${color}40`,
         }}
       >
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="text-6xl mb-4"
-        >
-          🏆
-        </motion.div>
         <h1
           className="text-4xl font-black mb-2"
           style={{ color }}
         >
-          VICTORY!
+          VICTORY
         </h1>
         <p className="text-xl font-bold text-white mb-1">{winner.name}</p>
-        <p className="text-white/50 mb-6">Achieved {calculateVP(game, game.winner)} victory points!</p>
+        <p className="text-white/50 mb-6">Achieved {calculateVP(game, game.winner)} victory points</p>
 
         <div className="space-y-2 mb-8">
           {standings.map(({ player, vp }, i) => (
@@ -67,11 +57,11 @@ export function WinScreen() {
                 <span className="text-white/40 w-4">{i + 1}.</span>
                 <div
                   className="w-3 h-3 rounded-full"
-                  style={{ background: PLAYER_COLORS[player.color] }}
+                  style={{ background: PLAYER_HEX_COLORS[player.color] }}
                 />
                 <span className="font-medium text-white/90">{player.name}</span>
               </div>
-              <span className="font-bold text-yellow-400">⭐ {vp}</span>
+              <span className="font-bold text-yellow-400">VP {vp}</span>
             </div>
           ))}
         </div>

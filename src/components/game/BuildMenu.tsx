@@ -3,18 +3,13 @@ import { Hammer, Truck, Home, Building2, CreditCard, X } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { useShallow } from 'zustand/react/shallow'
 import { COSTS, canAfford } from '../../utils/gameLogic'
+import { RESOURCE_LABELS, RESOURCE_COLORS } from '../../constants/resources'
 
 interface CostBadgeProps {
   costs: Record<string, number>
 }
 
 function CostBadge({ costs }: CostBadgeProps) {
-  const icons: Record<string, string> = {
-    food: '🌾', weapons: '⚔️', ammo: '💣', tools: '🔧', supplies: '📦',
-  }
-  const colors: Record<string, string> = {
-    food: '#f59e0b', weapons: '#ef4444', ammo: '#9ca3af', tools: '#b45309', supplies: '#86efac',
-  }
   return (
     <div className="flex gap-1 flex-wrap mt-1">
       {Object.entries(costs)
@@ -23,9 +18,13 @@ function CostBadge({ costs }: CostBadgeProps) {
           <span
             key={res}
             className="text-xs px-1 py-0.5 rounded font-medium"
-            style={{ color: colors[res], background: colors[res] + '20', border: `1px solid ${colors[res]}40` }}
+            style={{
+              color: RESOURCE_COLORS[res as keyof typeof RESOURCE_COLORS],
+              background: RESOURCE_COLORS[res as keyof typeof RESOURCE_COLORS] + '20',
+              border: `1px solid ${RESOURCE_COLORS[res as keyof typeof RESOURCE_COLORS]}40`,
+            }}
           >
-            {icons[res]}{count}
+            {RESOURCE_LABELS[res as keyof typeof RESOURCE_LABELS]} {count}
           </span>
         ))}
     </div>
@@ -58,7 +57,7 @@ export function BuildMenu() {
       costs: COSTS.route,
       can: canBuildRoute,
       hint: 'Click a valid edge on the board',
-      onClick: () => { /* handled by edge click */ },
+      onClick: () => {},
     },
     {
       icon: <Home size={18} />,
@@ -67,7 +66,7 @@ export function BuildMenu() {
       costs: COSTS.outpost,
       can: canBuildOutpost,
       hint: 'Click a valid vertex on the board',
-      onClick: () => { /* handled by vertex click */ },
+      onClick: () => {},
     },
     {
       icon: <Building2 size={18} />,
@@ -76,7 +75,7 @@ export function BuildMenu() {
       costs: COSTS.base,
       can: canBuildBase,
       hint: 'Click your outpost to upgrade',
-      onClick: () => { /* handled by vertex click */ },
+      onClick: () => {},
     },
     {
       icon: <CreditCard size={18} />,

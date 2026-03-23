@@ -5,9 +5,8 @@ import type {
   PlayerColor,
 } from '../types/game'
 import { EMPTY_RESOURCES } from '../types/game'
-import {
-  generateTiles, generateVerticesAndEdges, HEX_SIZE,
-} from '../utils/hexGrid'
+import { BOARD_CENTER } from '../constants/colors'
+import { generateTiles, generateVerticesAndEdges, HEX_SIZE } from '../utils/hexGrid'
 import {
   COSTS, canAfford, subtractResources, addResources,
   produceResources, calculateLongestRoad, calculateVP,
@@ -16,8 +15,6 @@ import {
   totalResources, TERRAIN_RESOURCE,
 } from '../utils/gameLogic'
 
-const BOARD_CENTER = { x: 350, y: 310 }
-
 interface LobbyPlayer {
   name: string
   isAI: boolean
@@ -25,10 +22,7 @@ interface LobbyPlayer {
 }
 
 interface GameStore {
-  // UI state
   lobbyPlayers: LobbyPlayer[]
-  selectedVertexId: string | null
-  selectedEdgeId: string | null
   setupOutpostVertexId: string | null
   hoveredVertexId: string | null
   hoveredEdgeId: string | null
@@ -39,57 +33,42 @@ interface GameStore {
   discardTarget: string | null
   discardSelections: Resources
   yearOfPlentySelections: ResourceType[]
-
-  // Game state
   game: GameState | null
 
-  // Actions - Lobby
   setLobbyPlayers: (players: LobbyPlayer[]) => void
   startGame: () => void
 
-  // Actions - Board interaction
   hoverVertex: (id: string | null) => void
   hoverEdge: (id: string | null) => void
   clickVertex: (id: string) => void
   clickEdge: (id: string) => void
   clickTile: (id: string) => void
 
-  // Actions - Turn
   rollDice: () => void
   endTurn: () => void
 
-  // Actions - Building
   buildRoute: (edgeId: string) => void
   buildOutpost: (vertexId: string) => void
   buildBase: (vertexId: string) => void
   buyDevCard: () => void
 
-  // Actions - Dev Cards
   playDevCard: (type: DevCardType) => void
   chooseMonopolyResource: (resource: ResourceType) => void
   chooseYearOfPlentyResource: (resource: ResourceType) => void
   confirmYearOfPlenty: () => void
 
-  // Actions - Trading
   bankTrade: (giving: ResourceType, receiving: ResourceType) => void
-  proposeTrade: (offering: Resources, requesting: Resources, toPlayerId?: string) => void
-  respondTrade: (tradeId: string, accept: boolean) => void
-  cancelTrade: () => void
 
-  // Actions - Robber
   moveRobber: (tileId: string) => void
   stealResource: (fromPlayerId: string) => void
 
-  // Actions - Discard
   updateDiscardSelection: (resource: ResourceType, delta: number) => void
   confirmDiscard: () => void
 
-  // UI toggles
   toggleBuildMenu: (open?: boolean) => void
   toggleTradeMenu: (open?: boolean) => void
   toggleDevCardMenu: (open?: boolean) => void
 
-  // Computed helpers
   getValidOutpostVertices: () => string[]
   getValidBaseVertices: () => string[]
   getValidRouteEdges: () => string[]
@@ -130,6 +109,70 @@ function checkWinner(state: GameState): void {
   }
 }
 
+function grantPortAccess(state: GameState, edgeId: string, playerId: string): void {
+  state.edges[edgeId].vertexIds.forEach(vId => {
+    const v = state.vertices[vId]
+    if (v.portType && !state.players[playerId].ports.includes(v.portType)) {
+      state.players[playerId].ports.push(v.portType)
+    }
+  })
+}
+
+function stealRandomResource(state: GameState, thiefId: string, victimId: string): void {
+  const resources = (Object.entries(state.players[victimId].resources) as [ResourceType, number][])
+    .filter(([, count]) => count > 0)
+    .map(([res]) => res)
+  if (resources.length === 0) return
+
+  const stolen = resources[Math.floor(Math.random() * resources.length)]
+  state.players[victimId].resources[stolen] -= 1
+  state.players[thiefId].resources[stolen] += 1
+  state.log.push(addLog(
+    state,
+    `${state.players[thiefId].name} stole 1 resource from ${state.players[victimId].name}`,
+    thiefId
+  ))
+}
+
+function findStealTargets(state: GameState, tileId: string, currentPlayerId: string): Set<string> {
+  const targets = new Set<string>()
+  const adjVertices = Object.values(state.vertices).filter(v => v.hexIds.includes(tileId))
+  for (const v of adjVertices) {
+    if (v.building && v.building.playerId !== currentPlayerId) {
+      if (totalResources(state.players[v.building.playerId].resources) > 0) {
+        targets.add(v.building.playerId)
+      }
+    }
+  }
+  return targets
+}
+
+function advanceSetup(state: GameState, ui: { setupOutpostVertexId: string | null }): void {
+  const playerCount = state.playerOrder.length
+  const idx = state.currentPlayerIndex
+
+  if (state.setupRound === 1) {
+    if (idx < playerCount - 1) {
+      state.currentPlayerIndex = idx + 1
+      state.setupSubPhase = 'place_outpost'
+    } else {
+      state.setupRound = 2
+      state.setupSubPhase = 'place_outpost'
+    }
+  } else {
+    if (idx > 0) {
+      state.currentPlayerIndex = idx - 1
+      state.setupSubPhase = 'place_outpost'
+    } else {
+      state.phase = 'playing'
+      state.setupSubPhase = 'place_outpost'
+      state.currentPlayerIndex = 0
+      state.log.push(addLog(state, 'Setup complete. Game begins. Roll dice to start your turn.'))
+    }
+  }
+  ui.setupOutpostVertexId = null
+}
+
 export const useGameStore = create<GameStore>()(
   immer((set, get) => ({
     lobbyPlayers: [
@@ -137,8 +180,6 @@ export const useGameStore = create<GameStore>()(
       { name: 'General AI', isAI: true, color: 'blue' },
       { name: 'Colonel AI', isAI: true, color: 'green' },
     ],
-    selectedVertexId: null,
-    selectedEdgeId: null,
     setupOutpostVertexId: null,
     hoveredVertexId: null,
     hoveredEdgeId: null,
@@ -194,8 +235,6 @@ export const useGameStore = create<GameStore>()(
         winner: null,
         log: [],
         freeRoadsRemaining: 0,
-        yearOfPlentyRemaining: 0,
-        monopolyResource: null,
         robberTileId,
       }
     }),
@@ -214,7 +253,6 @@ export const useGameStore = create<GameStore>()(
         s.setupOutpostVertexId = id
         game.setupSubPhase = 'place_route'
 
-        // Round 2: give starting resources from adjacent tiles
         if (game.setupRound === 2) {
           const vertex = game.vertices[id]
           for (const hexId of vertex.hexIds) {
@@ -230,10 +268,20 @@ export const useGameStore = create<GameStore>()(
         return
       }
 
-      if (game.phase === 'setup') return
-      if (game.phase === 'robber' || game.phase === 'stealing') return
+      if (game.phase !== 'playing') return
+      if (!game.hasRolled) return
 
-      s.selectedVertexId = id
+      const vertex = game.vertices[id]
+      if (!vertex) return
+
+      if (vertex.building?.playerId === playerId && vertex.building.type === 'outpost') {
+        get().buildBase(id)
+        return
+      }
+
+      if (!vertex.building && canPlaceOutpost(id, playerId, game, false) && canAfford(game.players[playerId], COSTS.outpost)) {
+        get().buildOutpost(id)
+      }
     }),
 
     clickEdge: (id) => set(s => {
@@ -246,82 +294,39 @@ export const useGameStore = create<GameStore>()(
         if (!canPlaceRoad(id, playerId, game, true, setupVertex)) return
         game.edges[id].road = { playerId }
 
-        game.edges[id].vertexIds.forEach(vId => {
-          const v = game.vertices[vId]
-          if (v.portType && !game.players[playerId].ports.includes(v.portType)) {
-            game.players[playerId].ports.push(v.portType)
-          }
-        })
-
+        grantPortAccess(game, id, playerId)
         game.log.push(addLog(game, `${game.players[playerId].name} placed a supply route`, playerId))
-
-        const playerCount = game.playerOrder.length
-        const idx = game.currentPlayerIndex
-
-        if (game.setupRound === 1) {
-          if (idx < playerCount - 1) {
-            game.currentPlayerIndex = idx + 1
-            game.setupSubPhase = 'place_outpost'
-          } else {
-            // Start round 2 in reverse order; currentPlayerIndex stays at last player
-            game.setupRound = 2
-            game.setupSubPhase = 'place_outpost'
-          }
-        } else {
-          if (idx > 0) {
-            game.currentPlayerIndex = idx - 1
-            game.setupSubPhase = 'place_outpost'
-          } else {
-            game.phase = 'playing'
-            game.setupSubPhase = 'place_outpost'
-            game.currentPlayerIndex = 0
-            game.log.push(addLog(game, 'Setup complete! Game begins. Roll dice to start your turn.'))
-          }
-        }
-        s.setupOutpostVertexId = null
+        advanceSetup(game, s)
         return
       }
 
-      s.selectedEdgeId = id
+      if (game.phase === 'playing' || game.phase === 'road_building') {
+        get().buildRoute(id)
+      }
     }),
 
     clickTile: (id) => set(s => {
       if (!s.game) return
       const game = s.game
-      if (game.phase === 'robber') {
-        const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
-        if (id === game.robberTileId) return
+      if (game.phase !== 'robber') return
 
-        game.tiles[game.robberTileId].hasRobber = false
-        game.tiles[id].hasRobber = true
-        game.robberTileId = id
-        game.log.push(addLog(game, `${game.players[currentPlayerId].name} moved the robber`, currentPlayerId))
+      const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
+      if (id === game.robberTileId) return
 
-        const adjPlayers = new Set<string>()
-        const adjVertices = Object.values(game.vertices).filter(v => v.hexIds.includes(id))
-        for (const v of adjVertices) {
-          if (v.building && v.building.playerId !== currentPlayerId) {
-            if (totalResources(game.players[v.building.playerId].resources) > 0) {
-              adjPlayers.add(v.building.playerId)
-            }
-          }
-        }
+      game.tiles[game.robberTileId].hasRobber = false
+      game.tiles[id].hasRobber = true
+      game.robberTileId = id
+      game.log.push(addLog(game, `${game.players[currentPlayerId].name} moved the robber`, currentPlayerId))
 
-        if (adjPlayers.size === 0) {
-          game.phase = 'playing'
-        } else if (adjPlayers.size === 1) {
-          const victimId = [...adjPlayers][0]
-          const resources = Object.entries(game.players[victimId].resources)
-            .filter(([, count]) => count > 0)
-            .map(([res]) => res as ResourceType)
-          const stolen = resources[Math.floor(Math.random() * resources.length)]
-          game.players[victimId].resources[stolen] -= 1
-          game.players[currentPlayerId].resources[stolen] += 1
-          game.log.push(addLog(game, `${game.players[currentPlayerId].name} stole 1 resource from ${game.players[victimId].name}`, currentPlayerId))
-          game.phase = 'playing'
-        } else {
-          game.phase = 'stealing'
-        }
+      const adjPlayers = findStealTargets(game, id, currentPlayerId)
+
+      if (adjPlayers.size === 0) {
+        game.phase = 'playing'
+      } else if (adjPlayers.size === 1) {
+        stealRandomResource(game, currentPlayerId, [...adjPlayers][0])
+        game.phase = 'playing'
+      } else {
+        game.phase = 'stealing'
       }
     }),
 
@@ -337,6 +342,8 @@ export const useGameStore = create<GameStore>()(
       game.lastRoll = { die1, die2, total }
       game.hasRolled = true
 
+      const currentPlayer = game.players[game.playerOrder[game.currentPlayerIndex]]
+
       if (total === 7) {
         const mustDiscardPlayers = game.playerOrder.filter(pid =>
           mustDiscard(game.players[pid])
@@ -351,17 +358,15 @@ export const useGameStore = create<GameStore>()(
           game.phase = 'robber'
         }
 
-        const currentPlayer = game.players[game.playerOrder[game.currentPlayerIndex]]
         game.log.push(addLog(game, `${currentPlayer.name} rolled 7! Robber activates.`))
-      } else {
-        const production = produceResources(game, total)
-        for (const [pid, res] of Object.entries(production)) {
-          game.players[pid].resources = addResources(game.players[pid].resources, res)
-        }
-
-        const currentPlayer = game.players[game.playerOrder[game.currentPlayerIndex]]
-        game.log.push(addLog(game, `${currentPlayer.name} rolled ${total} (${die1}+${die2})`))
+        return
       }
+
+      const production = produceResources(game, total)
+      for (const [pid, res] of Object.entries(production)) {
+        game.players[pid].resources = addResources(game.players[pid].resources, res)
+      }
+      game.log.push(addLog(game, `${currentPlayer.name} rolled ${total} (${die1}+${die2})`))
     }),
 
     endTurn: () => set(s => {
@@ -379,10 +384,7 @@ export const useGameStore = create<GameStore>()(
       game.lastRoll = null
       game.turn += 1
 
-      s.selectedVertexId = null
-      s.selectedEdgeId = null
       s.showBuildMenu = false
-      // AI turns are handled by useAIPlayer
     }),
 
     buildRoute: (edgeId) => set(s => {
@@ -392,7 +394,6 @@ export const useGameStore = create<GameStore>()(
       const player = game.players[playerId]
 
       if (game.phase === 'road_building') {
-        // Free road from road_building dev card
         if (!canPlaceRoad(edgeId, playerId, game, false)) return
         game.edges[edgeId].road = { playerId }
         game.freeRoadsRemaining -= 1
@@ -405,14 +406,7 @@ export const useGameStore = create<GameStore>()(
         game.edges[edgeId].road = { playerId }
       }
 
-      // Grant port access if road endpoint touches a port vertex
-      game.edges[edgeId].vertexIds.forEach(vId => {
-        const v = game.vertices[vId]
-        if (v.portType && !game.players[playerId].ports.includes(v.portType)) {
-          game.players[playerId].ports.push(v.portType)
-        }
-      })
-
+      grantPortAccess(game, edgeId, playerId)
       updateLongestRoad(game)
       game.log.push(addLog(game, `${player.name} built a supply route`, playerId))
       checkWinner(game)
@@ -505,16 +499,13 @@ export const useGameStore = create<GameStore>()(
           game.log.push(addLog(game, `${player.name} played Road Building`, playerId))
           break
         case 'year_of_plenty':
-          game.yearOfPlentyRemaining = 2
           s.yearOfPlentySelections = []
           game.log.push(addLog(game, `${player.name} played Year of Plenty`, playerId))
           break
         case 'monopoly':
           game.log.push(addLog(game, `${player.name} played Monopoly`, playerId))
-          // Resource selection handled in chooseMonopolyResource
           break
         case 'victory_point':
-          // VP cards are revealed automatically on win, not played
           break
       }
 
@@ -571,65 +562,16 @@ export const useGameStore = create<GameStore>()(
       game.log.push(addLog(game, `${player.name} traded ${ratio} ${giving} for 1 ${receiving}`, playerId))
     }),
 
-    proposeTrade: (offering, requesting, toPlayerId) => set(s => {
-      if (!s.game) return
-      const game = s.game
-      const playerId = game.playerOrder[game.currentPlayerIndex]
-
-      game.activeTrade = {
-        id: `trade-${Date.now()}`,
-        fromPlayerId: playerId,
-        toPlayerId: toPlayerId ?? null,
-        offering,
-        requesting,
-        status: 'pending',
-      }
-    }),
-
-    respondTrade: (tradeId, accept) => set(s => {
-      if (!s.game) return
-      const game = s.game
-      if (!game.activeTrade || game.activeTrade.id !== tradeId) return
-
-      if (accept) {
-        const { fromPlayerId, toPlayerId, offering, requesting } = game.activeTrade
-        if (!toPlayerId) return
-        game.players[fromPlayerId].resources = subtractResources(game.players[fromPlayerId].resources, offering)
-        game.players[fromPlayerId].resources = addResources(game.players[fromPlayerId].resources, requesting)
-        game.players[toPlayerId].resources = subtractResources(game.players[toPlayerId].resources, requesting)
-        game.players[toPlayerId].resources = addResources(game.players[toPlayerId].resources, offering)
-
-        game.log.push(addLog(game, `Trade accepted between ${game.players[fromPlayerId].name} and ${game.players[toPlayerId].name}`))
-      }
-      game.activeTrade = null
-    }),
-
-    cancelTrade: () => set(s => {
-      if (!s.game) return
-      s.game.activeTrade = null
-    }),
-
-    moveRobber: (tileId) => set(s => {
-      if (!s.game) return
-      get().clickTile(tileId) // delegated to clickTile
-    }),
+    moveRobber: (tileId) => {
+      get().clickTile(tileId)
+    },
 
     stealResource: (fromPlayerId) => set(s => {
       if (!s.game) return
       const game = s.game
       const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
-      const victim = game.players[fromPlayerId]
 
-      const resources = (Object.entries(victim.resources) as [ResourceType, number][])
-        .filter(([, count]) => count > 0)
-        .map(([res]) => res)
-      if (resources.length === 0) return
-
-      const stolen = resources[Math.floor(Math.random() * resources.length)]
-      game.players[fromPlayerId].resources[stolen] -= 1
-      game.players[currentPlayerId].resources[stolen] += 1
-
-      game.log.push(addLog(game, `${game.players[currentPlayerId].name} stole 1 resource from ${victim.name}`, currentPlayerId))
+      stealRandomResource(game, currentPlayerId, fromPlayerId)
       game.phase = 'playing'
     }),
 

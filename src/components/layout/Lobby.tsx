@@ -2,15 +2,15 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Trash2, Bot, User, Play, Shield } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
+import { RESOURCE_LABELS, TERRAIN_LABELS, RESOURCE_COLORS } from '../../constants/resources'
+import type { PlayerColor } from '../../types/game'
 
 const COLORS = [
-  { id: 'red', label: 'Red', hex: '#ef4444' },
-  { id: 'blue', label: 'Blue', hex: '#3b82f6' },
-  { id: 'green', label: 'Green', hex: '#22c55e' },
-  { id: 'orange', label: 'Orange', hex: '#f97316' },
-] as const
-
-type PlayerColor = typeof COLORS[number]['id']
+  { id: 'red' as PlayerColor, label: 'Red', hex: '#ef4444' },
+  { id: 'blue' as PlayerColor, label: 'Blue', hex: '#3b82f6' },
+  { id: 'green' as PlayerColor, label: 'Green', hex: '#22c55e' },
+  { id: 'orange' as PlayerColor, label: 'Orange', hex: '#f97316' },
+]
 
 interface LobbyPlayer {
   name: string
@@ -32,7 +32,7 @@ export function Lobby() {
     if (players.length >= 4) return
     const usedColors = new Set(players.map(p => p.color))
     const freeColor = COLORS.find(c => !usedColors.has(c.id))?.id ?? 'orange'
-    setPlayers([...players, { name: `Soldier ${players.length + 1}`, isAI: true, color: freeColor as PlayerColor }])
+    setPlayers([...players, { name: `Soldier ${players.length + 1}`, isAI: true, color: freeColor }])
   }
 
   const removePlayer = (i: number) => {
@@ -45,11 +45,18 @@ export function Lobby() {
   }
 
   const handleStart = () => {
-    setLobbyPlayers(players as typeof players)
+    setLobbyPlayers(players)
     startGame()
   }
 
   const usedColors = new Set(players.map(p => p.color))
+
+  const resourceEntries = (['food', 'weapons', 'ammo', 'tools', 'supplies'] as const).map(r => ({
+    key: r,
+    label: RESOURCE_LABELS[r],
+    terrain: TERRAIN_LABELS[r],
+    color: RESOURCE_COLORS[r],
+  }))
 
   return (
     <div
@@ -175,17 +182,27 @@ export function Lobby() {
         <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <p className="text-xs font-bold text-white/30 uppercase tracking-wider mb-3">Resources</p>
           <div className="grid grid-cols-5 gap-2">
+            {resourceEntries.map(({ key, label, terrain, color }) => (
+              <div key={key} className="text-center">
+                <div className="text-sm font-bold mb-0.5" style={{ color }}>{label}</div>
+                <div className="text-xs text-white/25">{terrain}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <p className="text-xs font-bold text-white/30 uppercase tracking-wider mb-3">Build Costs</p>
+          <div className="grid grid-cols-2 gap-3 text-xs">
             {[
-              { icon: '🌾', label: 'Food', sub: 'Fields' },
-              { icon: '⚔️', label: 'Weapons', sub: 'Quarries' },
-              { icon: '💣', label: 'Ammo', sub: 'Mountains' },
-              { icon: '🔧', label: 'Tools', sub: 'Forests' },
-              { icon: '📦', label: 'Supplies', sub: 'Pastures' },
-            ].map(({ icon, label, sub }) => (
-              <div key={label} className="text-center">
-                <div className="text-2xl mb-0.5">{icon}</div>
-                <div className="text-xs font-medium text-white/60">{label}</div>
-                <div className="text-xs text-white/25">{sub}</div>
+              { name: 'Supply Route', cost: '1 Tools + 1 Supplies' },
+              { name: 'Outpost', cost: '1 Tools + 1 Supplies + 1 Food + 1 Weapons' },
+              { name: 'Base', cost: '2 Food + 3 Ammo' },
+              { name: 'Dev Card', cost: '1 Supplies + 1 Food + 1 Ammo' },
+            ].map(({ name, cost }) => (
+              <div key={name} className="flex flex-col">
+                <span className="font-medium text-white/60">{name}</span>
+                <span className="text-white/30">{cost}</span>
               </div>
             ))}
           </div>
@@ -205,31 +222,6 @@ export function Lobby() {
           <Play size={20} />
           Start Game
         </motion.button>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="mt-8 w-full max-w-lg"
-      >
-        <div
-          className="rounded-xl p-4 grid grid-cols-2 gap-3 text-xs"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-white/30 font-bold uppercase tracking-wider col-span-2 mb-1">Build Costs</div>
-          {[
-            { name: '🛤️ Supply Route', cost: '1🔧 + 1📦' },
-            { name: '🏠 Outpost', cost: '1🔧 + 1📦 + 1🌾 + 1⚔️' },
-            { name: '🏰 Base', cost: '2🌾 + 3💣' },
-            { name: '🃏 Dev Card', cost: '1📦 + 1🌾 + 1💣' },
-          ].map(({ name, cost }) => (
-            <div key={name} className="flex flex-col">
-              <span className="font-medium text-white/60">{name}</span>
-              <span className="text-white/30">{cost}</span>
-            </div>
-          ))}
-        </div>
       </motion.div>
     </div>
   )

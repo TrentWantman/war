@@ -1,10 +1,7 @@
 import { motion } from 'framer-motion'
 import { useGameStore } from '../../store/gameStore'
 import { discardAmount, totalResources } from '../../utils/gameLogic'
-import { RESOURCE_CONFIG } from '../../utils/hexGrid'
-import type { ResourceType } from '../../types/game'
-
-const RESOURCE_TYPES: ResourceType[] = ['food', 'weapons', 'ammo', 'tools', 'supplies']
+import { RESOURCE_LABELS, RESOURCE_COLORS, RESOURCE_BG_COLORS, RESOURCE_TYPES } from '../../constants/resources'
 
 export function DiscardModal() {
   const game = useGameStore(s => s.game)
@@ -34,7 +31,6 @@ export function DiscardModal() {
         style={{ background: '#161b22', border: '1px solid #ef444460' }}
       >
         <div className="text-center mb-6">
-          <div className="text-4xl mb-3">⚠️</div>
           <h2 className="text-xl font-black text-white mb-1">Discard Required</h2>
           <p className="text-sm text-white/60">
             <span className="font-bold text-white">{player.name}</span> has too many resources.
@@ -50,7 +46,6 @@ export function DiscardModal() {
 
         <div className="space-y-2 mb-6">
           {RESOURCE_TYPES.map(r => {
-            const cfg = RESOURCE_CONFIG[r]
             const available = player.resources[r]
             const sel = discardSelections[r]
             if (available === 0) return null
@@ -58,12 +53,11 @@ export function DiscardModal() {
               <div
                 key={r}
                 className="flex items-center justify-between p-2 rounded-lg"
-                style={{ background: cfg.bgColor, border: `1px solid ${cfg.color}30` }}
+                style={{ background: RESOURCE_BG_COLORS[r], border: `1px solid ${RESOURCE_COLORS[r]}30` }}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">{cfg.icon}</span>
-                  <span className="text-sm font-medium" style={{ color: cfg.color }}>
-                    {cfg.label}
+                  <span className="text-sm font-medium" style={{ color: RESOURCE_COLORS[r] }}>
+                    {RESOURCE_LABELS[r]}
                   </span>
                   <span className="text-xs text-white/40">({available} owned)</span>
                 </div>
@@ -74,7 +68,7 @@ export function DiscardModal() {
                     className="w-7 h-7 rounded-full font-bold text-white/80 disabled:opacity-30 transition-all"
                     style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}
                   >
-                    −
+                    -
                   </button>
                   <span className="w-6 text-center font-bold text-white">{sel}</span>
                   <button

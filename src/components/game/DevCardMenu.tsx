@@ -2,18 +2,16 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield, X } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
-import type { DevCardType, ResourceType } from '../../types/game'
-import { RESOURCE_CONFIG } from '../../utils/hexGrid'
+import type { DevCardType } from '../../types/game'
+import { RESOURCE_LABELS, RESOURCE_COLORS, RESOURCE_BG_COLORS, RESOURCE_SHORT_LABELS, RESOURCE_TYPES } from '../../constants/resources'
 
-const CARD_INFO: Record<DevCardType, { label: string; icon: string; desc: string }> = {
-  soldier: { label: 'Soldier', icon: '⚔️', desc: 'Move robber, steal a resource. Counts toward Largest Force.' },
-  road_building: { label: 'Road Building', icon: '🛣️', desc: 'Place 2 free supply routes immediately.' },
-  year_of_plenty: { label: 'Year of Plenty', icon: '🎁', desc: 'Take any 2 resources from the supply.' },
-  monopoly: { label: 'Monopoly', icon: '💰', desc: 'Name a resource. All players give you all of that resource.' },
-  victory_point: { label: 'Victory Point', icon: '⭐', desc: 'Worth 1 victory point. Revealed when you win.' },
+const CARD_INFO: Record<DevCardType, { label: string; desc: string }> = {
+  soldier: { label: 'Soldier', desc: 'Move robber, steal a resource. Counts toward Largest Force.' },
+  road_building: { label: 'Road Building', desc: 'Place 2 free supply routes immediately.' },
+  year_of_plenty: { label: 'Year of Plenty', desc: 'Take any 2 resources from the supply.' },
+  monopoly: { label: 'Monopoly', desc: 'Name a resource. All players give you all of that resource.' },
+  victory_point: { label: 'Victory Point', desc: 'Worth 1 victory point. Revealed when you win.' },
 }
-
-const RESOURCE_TYPES: ResourceType[] = ['food', 'weapons', 'ammo', 'tools', 'supplies']
 
 export function DevCardMenu() {
   const game = useGameStore(s => s.game)
@@ -80,24 +78,23 @@ export function DevCardMenu() {
               <div>
                 <p className="text-xs text-white/60 mb-3">Choose a resource to monopolize:</p>
                 <div className="grid grid-cols-5 gap-1">
-                  {RESOURCE_TYPES.map(r => {
-                    const cfg = RESOURCE_CONFIG[r]
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => {
-                          chooseMonopolyResource(r)
-                          setMonopolyStep(false)
-                          toggleDevCardMenu(false)
-                        }}
-                        className="flex flex-col items-center p-2 rounded-lg"
-                        style={{ background: cfg.bgColor, border: `1px solid ${cfg.color}40` }}
-                      >
-                        <span className="text-xl">{cfg.icon}</span>
-                        <span className="text-xs" style={{ color: cfg.color }}>{cfg.label.slice(0, 4)}</span>
-                      </button>
-                    )
-                  })}
+                  {RESOURCE_TYPES.map(r => (
+                    <button
+                      key={r}
+                      onClick={() => {
+                        chooseMonopolyResource(r)
+                        setMonopolyStep(false)
+                        toggleDevCardMenu(false)
+                      }}
+                      className="flex flex-col items-center p-2 rounded-lg"
+                      style={{ background: RESOURCE_BG_COLORS[r], border: `1px solid ${RESOURCE_COLORS[r]}40` }}
+                    >
+                      <span className="text-xs font-bold" style={{ color: RESOURCE_COLORS[r] }}>
+                        {RESOURCE_SHORT_LABELS[r]}
+                      </span>
+                      <span className="text-xs" style={{ color: RESOURCE_COLORS[r] }}>{RESOURCE_LABELS[r].slice(0, 4)}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -109,24 +106,29 @@ export function DevCardMenu() {
                 </p>
                 <div className="flex gap-1 mb-2">
                   {yearOfPlentySelections.map((r, i) => (
-                    <span key={i} className="text-lg">{RESOURCE_CONFIG[r].icon}</span>
+                    <span
+                      key={i}
+                      className="text-xs font-bold px-1.5 py-0.5 rounded"
+                      style={{ color: RESOURCE_COLORS[r], background: RESOURCE_BG_COLORS[r] }}
+                    >
+                      {RESOURCE_LABELS[r]}
+                    </span>
                   ))}
                 </div>
                 <div className="grid grid-cols-5 gap-1 mb-3">
-                  {RESOURCE_TYPES.map(r => {
-                    const cfg = RESOURCE_CONFIG[r]
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => chooseYearOfPlentyResource(r)}
-                        disabled={yearOfPlentySelections.length >= 2}
-                        className="flex flex-col items-center p-2 rounded-lg"
-                        style={{ background: cfg.bgColor, border: `1px solid ${cfg.color}40` }}
-                      >
-                        <span className="text-xl">{cfg.icon}</span>
-                      </button>
-                    )
-                  })}
+                  {RESOURCE_TYPES.map(r => (
+                    <button
+                      key={r}
+                      onClick={() => chooseYearOfPlentyResource(r)}
+                      disabled={yearOfPlentySelections.length >= 2}
+                      className="flex flex-col items-center p-2 rounded-lg"
+                      style={{ background: RESOURCE_BG_COLORS[r], border: `1px solid ${RESOURCE_COLORS[r]}40` }}
+                    >
+                      <span className="text-xs font-bold" style={{ color: RESOURCE_COLORS[r] }}>
+                        {RESOURCE_SHORT_LABELS[r]}
+                      </span>
+                    </button>
+                  ))}
                 </div>
                 {yearOfPlentySelections.length === 2 && (
                   <button
@@ -173,10 +175,9 @@ export function DevCardMenu() {
                       }}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">{info.icon}</span>
                         <div>
                           <div className="text-sm font-medium text-white/90">
-                            {info.label} <span className="text-white/40">×{count}</span>
+                            {info.label} <span className="text-white/40">x{count}</span>
                           </div>
                           <div className="text-xs text-white/40">{info.desc}</div>
                         </div>
@@ -188,13 +189,8 @@ export function DevCardMenu() {
                   <div className="p-2.5 rounded-lg opacity-60"
                     style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.2)' }}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">⭐</span>
-                      <div>
-                        <div className="text-sm font-medium text-white/90">Victory Point ×{vpCount}</div>
-                        <div className="text-xs text-white/40">Revealed automatically when you win</div>
-                      </div>
-                    </div>
+                    <div className="text-sm font-medium text-white/90">Victory Point x{vpCount}</div>
+                    <div className="text-xs text-white/40">Revealed automatically when you win</div>
                   </div>
                 )}
                 {!canPlay && game.hasRolled && game.devCardPlayedThisTurn && (
