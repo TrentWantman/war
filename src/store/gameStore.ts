@@ -9,11 +9,16 @@ import { BOARD_CENTER } from '../constants/colors'
 import { generateTiles, generateVerticesAndEdges, HEX_SIZE } from '../utils/hexGrid'
 import {
   COSTS, canAfford, subtractResources, addResources,
-  produceResources, calculateLongestRoad, calculateVP,
+  produceResources,
   createDevCardDeck, createInitialPlayers, addLog, mustDiscard, discardAmount,
   canPlaceOutpost, canPlaceBase, canPlaceRoad, getTradeRatio, assignPorts,
   totalResources, TERRAIN_RESOURCE,
 } from '../utils/gameLogic'
+import {
+  nextPlayerIndex, updateLongestRoad, updateLargestArmy,
+  checkWinner, grantPortAccess, stealRandomResource,
+  findStealTargets, advanceSetup, countPlayerBuildings, BUILDING_LIMITS,
+} from './helpers'
 
 interface LobbyPlayer {
   name: string
@@ -77,118 +82,6 @@ interface GameStore {
   getValidBaseVertices: () => string[]
   getValidRouteEdges: () => string[]
   getCurrentPlayer: () => Player | null
-}
-
-function nextPlayerIndex(state: GameState): number {
-  return (state.currentPlayerIndex + 1) % state.playerOrder.length
-}
-
-function updateLongestRoad(state: GameState): void {
-  let bestPlayer: string | null = null
-  let bestLength = 4
-
-  for (const playerId of state.playerOrder) {
-    const len = calculateLongestRoad(playerId, state.vertices, state.edges)
-    if (len >= 5 && len > bestLength) {
-      bestLength = len
-      bestPlayer = playerId
-    }
-  }
-
-  if (bestPlayer) {
-    state.longestRoadPlayerId = bestPlayer
-    state.longestRoadLength = bestLength
-  } else if (state.longestRoadPlayerId) {
-    const currentLen = calculateLongestRoad(state.longestRoadPlayerId, state.vertices, state.edges)
-    if (currentLen < 5) {
-      state.longestRoadPlayerId = null
-      state.longestRoadLength = 4
-    }
-  }
-}
-
-function updateLargestArmy(state: GameState): void {
-  for (const playerId of state.playerOrder) {
-    const soldiers = state.players[playerId].soldiersPlayed
-    if (soldiers >= 3 && soldiers > state.largestArmySize) {
-      state.largestArmySize = soldiers
-      state.largestArmyPlayerId = playerId
-    }
-  }
-}
-
-function checkWinner(state: GameState): void {
-  for (const playerId of state.playerOrder) {
-    const vp = calculateVP(state, playerId)
-    if (vp >= 10) {
-      state.winner = playerId
-      state.phase = 'game_over'
-    }
-  }
-}
-
-function grantPortAccess(state: GameState, edgeId: string, playerId: string): void {
-  state.edges[edgeId].vertexIds.forEach(vId => {
-    const v = state.vertices[vId]
-    if (v.portType && !state.players[playerId].ports.includes(v.portType)) {
-      state.players[playerId].ports.push(v.portType)
-    }
-  })
-}
-
-function stealRandomResource(state: GameState, thiefId: string, victimId: string): void {
-  const resources = (Object.entries(state.players[victimId].resources) as [ResourceType, number][])
-    .filter(([, count]) => count > 0)
-    .map(([res]) => res)
-  if (resources.length === 0) return
-
-  const stolen = resources[Math.floor(Math.random() * resources.length)]
-  state.players[victimId].resources[stolen] -= 1
-  state.players[thiefId].resources[stolen] += 1
-  state.log.push(addLog(
-    state,
-    `${state.players[thiefId].name} stole 1 resource from ${state.players[victimId].name}`,
-    thiefId
-  ))
-}
-
-function findStealTargets(state: GameState, tileId: string, currentPlayerId: string): Set<string> {
-  const targets = new Set<string>()
-  const adjVertices = Object.values(state.vertices).filter(v => v.hexIds.includes(tileId))
-  for (const v of adjVertices) {
-    if (v.building && v.building.playerId !== currentPlayerId) {
-      if (totalResources(state.players[v.building.playerId].resources) > 0) {
-        targets.add(v.building.playerId)
-      }
-    }
-  }
-  return targets
-}
-
-function advanceSetup(state: GameState, ui: { setupOutpostVertexId: string | null }): void {
-  const playerCount = state.playerOrder.length
-  const idx = state.currentPlayerIndex
-
-  if (state.setupRound === 1) {
-    if (idx < playerCount - 1) {
-      state.currentPlayerIndex = idx + 1
-      state.setupSubPhase = 'place_outpost'
-    } else {
-      state.setupRound = 2
-      state.setupSubPhase = 'place_outpost'
-    }
-  } else {
-    if (idx > 0) {
-      state.currentPlayerIndex = idx - 1
-      state.setupSubPhase = 'place_outpost'
-    } else {
-      state.phase = 'playing'
-      state.setupSubPhase = 'place_outpost'
-      state.currentPlayerIndex = 0
-      state.log.push(addLog(state, 'Setup complete. Game begins. Roll dice to start your turn.'))
-    }
-  }
-  ui.setupOutpostVertexId = null
 }
 
 export const useGameStore = create<GameStore>()(
@@ -422,6 +315,9 @@ export const useGameStore = create<GameStore>()(
       const playerId = game.playerOrder[game.currentPlayerIndex]
       const player = game.players[playerId]
 
+      const counts = countPlayerBuildings(game, playerId)
+      if (counts.routes >= BUILDING_LIMITS.route) return
+
       if (game.phase === 'road_building') {
         if (!canPlaceRoad(edgeId, playerId, game, false)) return
         game.edges[edgeId].road = { playerId }
@@ -448,6 +344,9 @@ export const useGameStore = create<GameStore>()(
       const playerId = game.playerOrder[game.currentPlayerIndex]
       const player = game.players[playerId]
 
+      const counts = countPlayerBuildings(game, playerId)
+      if (counts.outposts >= BUILDING_LIMITS.outpost) return
+
       if (!canPlaceOutpost(vertexId, playerId, game, false)) return
       if (!canAfford(player, COSTS.outpost)) return
 
@@ -469,6 +368,9 @@ export const useGameStore = create<GameStore>()(
       if (!game.hasRolled) return
       const playerId = game.playerOrder[game.currentPlayerIndex]
       const player = game.players[playerId]
+
+      const counts = countPlayerBuildings(game, playerId)
+      if (counts.bases >= BUILDING_LIMITS.base) return
 
       if (!canPlaceBase(vertexId, playerId, game)) return
       if (!canAfford(player, COSTS.base)) return
@@ -722,6 +624,8 @@ export const useGameStore = create<GameStore>()(
       const { game } = get()
       if (!game) return []
       const playerId = game.playerOrder[game.currentPlayerIndex]
+      const counts = countPlayerBuildings(game, playerId)
+      if (counts.outposts >= BUILDING_LIMITS.outpost) return []
       return Object.keys(game.vertices).filter(id =>
         canPlaceOutpost(id, playerId, game, game.phase === 'setup')
       )
@@ -731,6 +635,8 @@ export const useGameStore = create<GameStore>()(
       const { game } = get()
       if (!game) return []
       const playerId = game.playerOrder[game.currentPlayerIndex]
+      const counts = countPlayerBuildings(game, playerId)
+      if (counts.bases >= BUILDING_LIMITS.base) return []
       return Object.keys(game.vertices).filter(id =>
         canPlaceBase(id, playerId, game)
       )
@@ -741,6 +647,10 @@ export const useGameStore = create<GameStore>()(
       if (!game) return []
       const playerId = game.playerOrder[game.currentPlayerIndex]
       const isSetup = game.phase === 'setup'
+      if (!isSetup) {
+        const counts = countPlayerBuildings(game, playerId)
+        if (counts.routes >= BUILDING_LIMITS.route) return []
+      }
       return Object.keys(game.edges).filter(id =>
         canPlaceRoad(id, playerId, game, isSetup, setupOutpostVertexId ?? undefined)
       )
