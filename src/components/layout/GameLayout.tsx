@@ -14,6 +14,7 @@ import { DiscardModal } from '../game/DiscardModal'
 import { StealModal } from '../game/StealModal'
 import { WinScreen } from '../game/WinScreen'
 import { PlayerTradeMenu, TradeResponseBanner } from '../game/PlayerTradeMenu'
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 
 const PHASE_LABELS: Record<string, string> = {
   setup: 'Initial Placement',
@@ -32,6 +33,7 @@ const SETUP_HINTS: Record<string, string> = {
 
 export function GameLayout() {
   useAIPlayer()
+  useKeyboardShortcuts()
   const game = useGameStore(s => s.game)
   const rollDice = useGameStore(s => s.rollDice)
   const endTurn = useGameStore(s => s.endTurn)
@@ -191,6 +193,7 @@ export function GameLayout() {
               >
                 <Dice5 size={16} />
                 Roll Dice
+                {canRoll && <span className="text-xs opacity-50 ml-1">[R]</span>}
               </motion.button>
 
               {game.phase === 'playing' && (
@@ -220,6 +223,7 @@ export function GameLayout() {
                 }}
               >
                 End Turn
+                {canEndTurn && <span className="text-xs opacity-50">[E]</span>}
                 <ChevronRight size={14} />
               </motion.button>
             </div>

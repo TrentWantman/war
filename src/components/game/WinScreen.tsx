@@ -6,6 +6,7 @@ import { PLAYER_HEX_COLORS } from '../../constants/colors'
 export function WinScreen() {
   const game = useGameStore(s => s.game)
   const startGame = useGameStore(s => s.startGame)
+  const returnToLobby = useGameStore(s => s.returnToLobby)
 
   if (!game || !game.winner) return null
 
@@ -78,7 +79,7 @@ export function WinScreen() {
             Play Again
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={returnToLobby}
             className="flex-1 py-3 rounded-xl font-black text-sm transition-all"
             style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)' }}
           >

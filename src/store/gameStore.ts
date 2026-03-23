@@ -37,6 +37,7 @@ interface GameStore {
 
   setLobbyPlayers: (players: LobbyPlayer[]) => void
   startGame: () => void
+  returnToLobby: () => void
 
   hoverVertex: (id: string | null) => void
   hoverEdge: (id: string | null) => void
@@ -210,6 +211,17 @@ export const useGameStore = create<GameStore>()(
     game: null,
 
     setLobbyPlayers: (players) => set(s => { s.lobbyPlayers = players }),
+
+    returnToLobby: () => set(s => {
+      s.game = null
+      s.showBuildMenu = false
+      s.showTradeMenu = false
+      s.showDevCardMenu = false
+      s.showDiscardMenu = false
+      s.discardTarget = null
+      s.discardSelections = { ...EMPTY_RESOURCES }
+      s.yearOfPlentySelections = []
+    }),
 
     startGame: () => set(s => {
       const tiles = generateTiles()
