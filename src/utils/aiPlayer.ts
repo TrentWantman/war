@@ -153,12 +153,11 @@ function considerTrade(state: GameState, playerId: string): AIAction | null {
   for (const receiving of sortedNeeds) {
     if (player.resources[receiving] >= 3) continue
 
-    const ratio = getTradeRatio(player, receiving as ResourceType)
     const giving = resources
       .filter(r => r !== receiving && player.resources[r] >= getTradeRatio(player, r))
       .sort((a, b) => player.resources[b] - player.resources[a])[0]
 
-    if (giving && player.resources[giving] >= ratio) {
+    if (giving) {
       return { type: 'bank_trade', giving, receiving }
     }
   }
