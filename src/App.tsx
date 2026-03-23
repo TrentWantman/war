@@ -9,32 +9,57 @@ type AppMode = 'menu' | 'local' | 'online'
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3001'
 
+interface PublicRoomInfo {
+  id: string
+  code: string
+  hostName: string
+  playerCount: number
+  maxPlayers: number
+  mapId: string
+}
+
 interface RoomState {
-  room: { id: string; code: string; hostId: string; players: Record<string, unknown>; maxPlayers: number; state: string } | null
+  room: {
+    id: string
+    code: string
+    hostId: string
+    players: Record<string, unknown>
+    maxPlayers: number
+    state: string
+    isPrivate: boolean
+    mapId: string
+  } | null
   playerId: string | null
   error: string | null
+  publicRooms: PublicRoomInfo[]
 }
 
 function App() {
   const game = useGameStore(s => s.game)
   const [mode, setMode] = useState<AppMode>('menu')
-  const [roomState, setRoomState] = useState<RoomState>({ room: null, playerId: null, error: null })
+  const [roomState, setRoomState] = useState<RoomState>({
+    room: null,
+    playerId: null,
+    error: null,
+    publicRooms: [],
+  })
 
   const onMessage = useCallback((msg: { type: string; [key: string]: unknown }) => {
     switch (msg.type) {
       case 'room_created':
       case 'room_joined':
-        setRoomState({
+        setRoomState(prev => ({
+          ...prev,
           room: msg.room as RoomState['room'],
           playerId: msg.playerId as string,
           error: null,
-        })
+        }))
         break
       case 'room_updated':
         setRoomState(prev => ({ ...prev, room: msg.room as RoomState['room'], error: null }))
         break
-      case 'player_joined':
-      case 'player_left':
+      case 'room_list':
+        setRoomState(prev => ({ ...prev, publicRooms: msg.rooms as PublicRoomInfo[] }))
         break
       case 'game_started':
         useGameStore.getState().startGame()
@@ -69,16 +94,19 @@ function App() {
       room={roomState.room as Parameters<typeof OnlineLobby>[0]['room']}
       playerId={roomState.playerId}
       error={roomState.error}
-      onCreateRoom={(name) => send({ type: 'create_room', playerName: name })}
+      publicRooms={roomState.publicRooms}
+      onCreateRoom={(name, isPrivate) => send({ type: 'create_room', playerName: name, isPrivate })}
       onJoinRoom={(code, name) => send({ type: 'join_room', roomCode: code, playerName: name })}
+      onJoinRoomById={(roomId, name) => send({ type: 'join_room_by_id', roomId, playerName: name })}
       onToggleReady={() => send({ type: 'toggle_ready' })}
       onStartGame={() => send({ type: 'start_game' })}
       onLeaveRoom={() => {
         send({ type: 'leave_room' })
-        setRoomState({ room: null, playerId: null, error: null })
+        setRoomState({ room: null, playerId: null, error: null, publicRooms: roomState.publicRooms })
       }}
+      onRefreshRooms={() => send({ type: 'list_rooms' })}
       onBack={() => {
-        setRoomState({ room: null, playerId: null, error: null })
+        setRoomState({ room: null, playerId: null, error: null, publicRooms: [] })
         setMode('menu')
       }}
     />

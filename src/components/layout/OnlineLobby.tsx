@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Copy, Check, Wifi, WifiOff, Loader2, ArrowLeft } from 'lucide-react'
+import { Copy, Check, Wifi, WifiOff, Loader2, ArrowLeft, Lock, Globe, RefreshCw, Users } from 'lucide-react'
 import { PLAYER_HEX_COLORS } from '../../constants/colors'
 import type { PlayerColor } from '../../types/game'
 
@@ -20,6 +20,17 @@ interface Room {
   players: Record<string, RoomPlayer>
   maxPlayers: number
   state: string
+  isPrivate: boolean
+  mapId: string
+}
+
+interface PublicRoomInfo {
+  id: string
+  code: string
+  hostName: string
+  playerCount: number
+  maxPlayers: number
+  mapId: string
 }
 
 interface OnlineLobbyProps {
@@ -27,21 +38,30 @@ interface OnlineLobbyProps {
   room: Room | null
   playerId: string | null
   error: string | null
-  onCreateRoom: (name: string) => void
+  publicRooms: PublicRoomInfo[]
+  onCreateRoom: (name: string, isPrivate: boolean) => void
   onJoinRoom: (code: string, name: string) => void
+  onJoinRoomById: (roomId: string, name: string) => void
   onToggleReady: () => void
   onStartGame: () => void
   onLeaveRoom: () => void
+  onRefreshRooms: () => void
   onBack: () => void
 }
 
 export function OnlineLobby({
-  status, room, playerId, error,
-  onCreateRoom, onJoinRoom, onToggleReady, onStartGame, onLeaveRoom, onBack,
+  status, room, playerId, error, publicRooms,
+  onCreateRoom, onJoinRoom, onJoinRoomById, onToggleReady, onStartGame, onLeaveRoom, onRefreshRooms, onBack,
 }: OnlineLobbyProps) {
   const [name, setName] = useState('Commander')
   const [joinCode, setJoinCode] = useState('')
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (status === 'connected' && !room) {
+      onRefreshRooms()
+    }
+  }, [status, room])
 
   const copyCode = () => {
     if (!room) return
@@ -75,8 +95,11 @@ export function OnlineLobby({
               Leave
             </button>
             <div className="flex items-center gap-2">
-              <Wifi size={14} className="text-green-400" />
-              <span className="text-xs text-green-400">Connected</span>
+              {room.isPrivate ? (
+                <><Lock size={12} className="text-yellow-400" /><span className="text-xs text-yellow-400">Private</span></>
+              ) : (
+                <><Globe size={12} className="text-green-400" /><span className="text-xs text-green-400">Public</span></>
+              )}
             </div>
           </div>
 
@@ -202,7 +225,7 @@ export function OnlineLobby({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md rounded-2xl p-6"
+        className="w-full max-w-lg rounded-2xl p-6"
         style={{ background: '#161b22', border: '1px solid #30363d' }}
       >
         <div className="mb-4">
@@ -231,29 +254,48 @@ export function OnlineLobby({
           )}
         </AnimatePresence>
 
-        <button
-          onClick={() => name.trim() && onCreateRoom(name.trim())}
-          disabled={status !== 'connected' || !name.trim()}
-          className="w-full py-3 rounded-xl font-black text-sm transition-all mb-3"
-          style={{
-            background: status === 'connected' && name.trim()
-              ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
-              : 'rgba(255,255,255,0.05)',
-            color: status === 'connected' && name.trim() ? '#fff' : '#ffffff40',
-            cursor: status === 'connected' && name.trim() ? 'pointer' : 'not-allowed',
-            boxShadow: status === 'connected' && name.trim() ? '0 8px 32px rgba(220,38,38,0.4)' : 'none',
-          }}
-        >
-          Create Room
-        </button>
+        <div className="flex gap-2 mb-3">
+          <button
+            onClick={() => name.trim() && onCreateRoom(name.trim(), false)}
+            disabled={status !== 'connected' || !name.trim()}
+            className="flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2"
+            style={{
+              background: status === 'connected' && name.trim()
+                ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
+                : 'rgba(255,255,255,0.05)',
+              color: status === 'connected' && name.trim() ? '#fff' : '#ffffff40',
+              cursor: status === 'connected' && name.trim() ? 'pointer' : 'not-allowed',
+              boxShadow: status === 'connected' && name.trim() ? '0 8px 32px rgba(220,38,38,0.4)' : 'none',
+            }}
+          >
+            <Globe size={14} />
+            Public Room
+          </button>
+          <button
+            onClick={() => name.trim() && onCreateRoom(name.trim(), true)}
+            disabled={status !== 'connected' || !name.trim()}
+            className="py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+            style={{
+              background: status === 'connected' && name.trim()
+                ? 'rgba(234,179,8,0.15)'
+                : 'rgba(255,255,255,0.05)',
+              color: status === 'connected' && name.trim() ? '#eab308' : '#ffffff40',
+              border: `1px solid ${status === 'connected' && name.trim() ? '#eab30840' : 'rgba(255,255,255,0.06)'}`,
+              cursor: status === 'connected' && name.trim() ? 'pointer' : 'not-allowed',
+            }}
+          >
+            <Lock size={14} />
+            Private
+          </button>
+        </div>
 
         <div className="flex items-center gap-3 my-4">
           <div className="flex-1 h-px bg-white/10" />
-          <span className="text-xs text-white/30">or join a friend</span>
+          <span className="text-xs text-white/30">join by code</span>
           <div className="flex-1 h-px bg-white/10" />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-6">
           <input
             type="text"
             value={joinCode}
@@ -278,6 +320,54 @@ export function OnlineLobby({
             Join
           </button>
         </div>
+
+        {publicRooms.length > 0 && (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-1.5">
+                <Users size={12} className="text-white/30" />
+                <span className="text-xs font-bold text-white/30 uppercase tracking-wider">Open Games</span>
+              </div>
+              <button
+                onClick={onRefreshRooms}
+                className="text-white/30 hover:text-white/60 transition-colors"
+              >
+                <RefreshCw size={12} />
+              </button>
+            </div>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {publicRooms.map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => name.trim() && onJoinRoomById(r.id, name.trim())}
+                  disabled={!name.trim()}
+                  className="w-full flex items-center justify-between p-3 rounded-lg text-left transition-all hover:bg-white/5"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    cursor: name.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  <div>
+                    <span className="text-sm font-medium text-white/80">{r.hostName}'s game</span>
+                    <span className="text-xs text-white/30 ml-2">{r.mapId}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/40">{r.playerCount}/{r.maxPlayers}</span>
+                    <span className="text-xs px-2 py-0.5 rounded font-bold bg-green-500/20 text-green-400">Join</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {publicRooms.length === 0 && status === 'connected' && (
+          <div className="text-center py-4">
+            <p className="text-xs text-white/30">No open games right now</p>
+            <p className="text-xs text-white/20 mt-1">Create one and others will see it</p>
+          </div>
+        )}
 
         <button
           onClick={onBack}

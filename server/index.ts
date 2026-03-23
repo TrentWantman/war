@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws'
 import { createServer } from 'http'
 import { v4 as uuidv4 } from 'uuid'
-import type { Room, RoomPlayer, ClientMessage, ServerMessage } from './types.js'
+import type { Room, RoomPlayer, ClientMessage, ServerMessage, PublicRoomInfo } from './types.js'
 
 const PORT = parseInt(process.env.PORT ?? '3001', 10)
 const PLAYER_COLORS = ['red', 'blue', 'green', 'orange']
@@ -59,7 +59,51 @@ function broadcast(roomId: string, message: ServerMessage, exclude?: WebSocket):
   })
 }
 
-function handleCreateRoom(ws: WebSocket, playerName: string): void {
+function getPublicRoomList(): PublicRoomInfo[] {
+  const list: PublicRoomInfo[] = []
+  for (const room of rooms.values()) {
+    if (room.isPrivate) continue
+    if (room.state !== 'waiting') continue
+    const playerCount = Object.keys(room.players).length
+    if (playerCount >= room.maxPlayers) continue
+    const host = room.players[room.hostId]
+    list.push({
+      id: room.id,
+      code: room.code,
+      hostName: host?.name ?? 'Unknown',
+      playerCount,
+      maxPlayers: room.maxPlayers,
+      mapId: room.mapId,
+    })
+  }
+  return list.slice(0, 50)
+}
+
+function addPlayerToRoom(ws: WebSocket, room: Room, playerName: string): void {
+  const playerId = uuidv4()
+  const player: RoomPlayer = {
+    id: playerId,
+    name: playerName.slice(0, 20),
+    color: getNextColor(room),
+    isAI: false,
+    isConnected: true,
+    isReady: false,
+  }
+  room.players[playerId] = player
+  clientRooms.set(ws, { roomId: room.id, playerId })
+
+  send(ws, { type: 'room_joined', room, playerId })
+  broadcast(room.id, { type: 'player_joined', player }, ws)
+}
+
+function validateJoinable(room: Room | undefined): string | null {
+  if (!room) return 'Room not found'
+  if (Object.keys(room.players).length >= room.maxPlayers) return 'Room is full'
+  if (room.state !== 'waiting') return 'Game already in progress'
+  return null
+}
+
+function handleCreateRoom(ws: WebSocket, playerName: string, isPrivate: boolean, mapId: string): void {
   if (rooms.size >= MAX_ROOMS) {
     send(ws, { type: 'error', message: 'Server is full. Try again later.' })
     return
@@ -83,6 +127,8 @@ function handleCreateRoom(ws: WebSocket, playerName: string): void {
     players: { [playerId]: player },
     maxPlayers: 4,
     state: 'waiting',
+    isPrivate,
+    mapId,
     createdAt: Date.now(),
   }
   rooms.set(roomId, room)
@@ -90,37 +136,24 @@ function handleCreateRoom(ws: WebSocket, playerName: string): void {
   send(ws, { type: 'room_created', room, playerId })
 }
 
-function handleJoinRoom(ws: WebSocket, roomCode: string, playerName: string): void {
-  const room = [...rooms.values()].find(
-    r => r.code === roomCode.toUpperCase()
-  )
-  if (!room) {
-    send(ws, { type: 'error', message: 'Room not found' })
+function handleJoinByCode(ws: WebSocket, roomCode: string, playerName: string): void {
+  const room = [...rooms.values()].find(r => r.code === roomCode.toUpperCase())
+  const err = validateJoinable(room)
+  if (err || !room) {
+    send(ws, { type: 'error', message: err ?? 'Room not found' })
     return
   }
-  if (Object.keys(room.players).length >= room.maxPlayers) {
-    send(ws, { type: 'error', message: 'Room is full' })
-    return
-  }
-  if (room.state !== 'waiting') {
-    send(ws, { type: 'error', message: 'Game already in progress' })
-    return
-  }
+  addPlayerToRoom(ws, room, playerName)
+}
 
-  const playerId = uuidv4()
-  const player: RoomPlayer = {
-    id: playerId,
-    name: playerName.slice(0, 20),
-    color: getNextColor(room),
-    isAI: false,
-    isConnected: true,
-    isReady: false,
+function handleJoinById(ws: WebSocket, roomId: string, playerName: string): void {
+  const room = rooms.get(roomId)
+  const err = validateJoinable(room)
+  if (err || !room) {
+    send(ws, { type: 'error', message: err ?? 'Room not found' })
+    return
   }
-  room.players[playerId] = player
-  clientRooms.set(ws, { roomId: room.id, playerId })
-
-  send(ws, { type: 'room_joined', room, playerId })
-  broadcast(room.id, { type: 'player_joined', player }, ws)
+  addPlayerToRoom(ws, room, playerName)
 }
 
 function handleToggleReady(ws: WebSocket): void {
@@ -196,10 +229,13 @@ function handleMessage(ws: WebSocket, raw: string): void {
 
   switch (message.type) {
     case 'create_room':
-      handleCreateRoom(ws, message.playerName)
+      handleCreateRoom(ws, message.playerName, message.isPrivate, message.mapId ?? 'standard')
       break
     case 'join_room':
-      handleJoinRoom(ws, message.roomCode, message.playerName)
+      handleJoinByCode(ws, message.roomCode, message.playerName)
+      break
+    case 'join_room_by_id':
+      handleJoinById(ws, message.roomId, message.playerName)
       break
     case 'leave_room':
       handleDisconnect(ws)
@@ -209,6 +245,9 @@ function handleMessage(ws: WebSocket, raw: string): void {
       break
     case 'start_game':
       handleStartGame(ws)
+      break
+    case 'list_rooms':
+      send(ws, { type: 'room_list', rooms: getPublicRoomList() })
       break
     case 'game_action':
       handleGameAction(ws, message.action, message.payload)
@@ -246,6 +285,8 @@ function handleDisconnect(ws: WebSocket): void {
 }
 
 const httpServer = createServer((req, res) => {
+  res.setHeader('access-control-allow-origin', '*')
+
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' })
     res.end(JSON.stringify({
@@ -270,6 +311,12 @@ const httpServer = createServer((req, res) => {
       totalPlayers,
       connections: wss.clients.size,
     }))
+    return
+  }
+
+  if (req.url === '/rooms') {
+    res.writeHead(200, { 'content-type': 'application/json' })
+    res.end(JSON.stringify(getPublicRoomList()))
     return
   }
 
