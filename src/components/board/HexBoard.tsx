@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useShallow } from 'zustand/react/shallow'
-import { HEX_SIZE, hexCorners, tileCenter } from '../../utils/hexGrid'
+import { hexCorners, tileCenter, hexSizeForMap } from '../../utils/hexGrid'
 import { PLAYER_HEX_COLORS, BOARD_CENTER } from '../../constants/colors'
 import { TERRAIN_COLORS } from '../../constants/resources'
 import type { HexTile, Vertex, Edge, Point, PlayerColor } from '../../types/game'
@@ -253,6 +253,8 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
   const [localHoverId, setLocalHoverId] = useState<{ type: 'vertex' | 'edge' | 'tile'; id: string } | null>(null)
 
   const game = useGameStore(s => s.game)
+  const selectedMapId = useGameStore(s => s.selectedMapId)
+  const hexSize = hexSizeForMap(selectedMapId)
   const validOutposts = useGameStore(useShallow(s => s.getValidOutpostVertices()))
   const validRoutes = useGameStore(useShallow(s => s.getValidRouteEdges()))
   const validBases = useGameStore(useShallow(s => s.getValidBaseVertices()))
@@ -282,14 +284,14 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
     ctx.fillRect(0, 0, width, height)
 
     for (const tile of Object.values(tiles)) {
-      const center = tileCenter(tile, HEX_SIZE, BOARD_CENTER)
+      const center = tileCenter(tile, hexSize, BOARD_CENTER)
       const isHovered = localHoverId?.type === 'tile' && localHoverId.id === tile.id
       const isRobberTarget = phase === 'robber' && isHovered
-      drawHex(ctx, center, HEX_SIZE, tile, isHovered, isRobberTarget)
+      drawHex(ctx, center, hexSize, tile, isHovered, isRobberTarget)
     }
 
     for (const tile of Object.values(tiles)) {
-      const center = tileCenter(tile, HEX_SIZE, BOARD_CENTER)
+      const center = tileCenter(tile, hexSize, BOARD_CENTER)
       drawTerrainLabel(ctx, center, tile.terrain)
       drawNumberToken(ctx, center, tile.number, tile.hasRobber)
     }
@@ -312,7 +314,7 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
       const isHovered = localHoverId?.type === 'vertex' && localHoverId.id === vertex.id
       drawVertex(ctx, vertex, isValid, isHovered, phase, setupSubPhase, playerColorMap)
     }
-  }, [game, localHoverId, validOutposts, validRoutes, validBases, width, height])
+  }, [game, localHoverId, validOutposts, validRoutes, validBases, width, height, hexSize])
 
   useEffect(() => { draw() }, [draw])
 
@@ -329,10 +331,10 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
 
     if (phase === 'robber') {
       for (const tile of Object.values(tiles)) {
-        const center = tileCenter(tile, HEX_SIZE, BOARD_CENTER)
+        const center = tileCenter(tile, hexSize, BOARD_CENTER)
         const dx = x - center.x
         const dy = y - center.y
-        if (Math.sqrt(dx * dx + dy * dy) < HEX_SIZE * 0.85) {
+        if (Math.sqrt(dx * dx + dy * dy) < hexSize * 0.85) {
           return { type: 'tile' as const, id: tile.id }
         }
       }

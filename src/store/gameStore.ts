@@ -6,7 +6,7 @@ import type {
 } from '../types/game'
 import { EMPTY_RESOURCES } from '../types/game'
 import { BOARD_CENTER } from '../constants/colors'
-import { generateTiles, generateVerticesAndEdges, HEX_SIZE } from '../utils/hexGrid'
+import { generateTiles, generateVerticesAndEdges, hexSizeForMap } from '../utils/hexGrid'
 import {
   COSTS, canAfford, subtractResources, addResources,
   produceResources,
@@ -28,6 +28,7 @@ interface LobbyPlayer {
 
 interface GameStore {
   lobbyPlayers: LobbyPlayer[]
+  selectedMapId: string
   setupOutpostVertexId: string | null
   hoveredVertexId: string | null
   hoveredEdgeId: string | null
@@ -41,6 +42,7 @@ interface GameStore {
   game: GameState | null
 
   setLobbyPlayers: (players: LobbyPlayer[]) => void
+  setMapId: (mapId: string) => void
   startGame: () => void
   returnToLobby: () => void
 
@@ -91,6 +93,7 @@ export const useGameStore = create<GameStore>()(
       { name: 'General AI', isAI: true, color: 'blue' },
       { name: 'Colonel AI', isAI: true, color: 'green' },
     ],
+    selectedMapId: 'standard',
     setupOutpostVertexId: null,
     hoveredVertexId: null,
     hoveredEdgeId: null,
@@ -104,6 +107,7 @@ export const useGameStore = create<GameStore>()(
     game: null,
 
     setLobbyPlayers: (players) => set(s => { s.lobbyPlayers = players }),
+    setMapId: (mapId) => set(s => { s.selectedMapId = mapId }),
 
     returnToLobby: () => set(s => {
       s.game = null
@@ -117,8 +121,9 @@ export const useGameStore = create<GameStore>()(
     }),
 
     startGame: () => set(s => {
-      const tiles = generateTiles()
-      const { vertices: rawVertices, edges } = generateVerticesAndEdges(tiles, HEX_SIZE, BOARD_CENTER)
+      const hexSize = hexSizeForMap(s.selectedMapId)
+      const tiles = generateTiles(s.selectedMapId)
+      const { vertices: rawVertices, edges } = generateVerticesAndEdges(tiles, hexSize, BOARD_CENTER)
       const vertices = assignPorts(rawVertices, edges, tiles)
 
       const desertTile = Object.values(tiles).find(t => t.terrain === 'desert')

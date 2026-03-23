@@ -1,6 +1,16 @@
-import type { CubeCoord, Point, HexTile, Vertex, Edge, TerrainType } from '../types/game'
+import type { CubeCoord, Point, HexTile, Vertex, Edge } from '../types/game'
+import type { MapConfig } from './maps'
+import { getMapConfig } from './maps'
 
 export const HEX_SIZE = 56
+
+export function hexSizeForMap(mapId: string): number {
+  const config = getMapConfig(mapId)
+  const count = config.coords.length
+  if (count <= 9) return 70
+  if (count <= 19) return 56
+  return 38
+}
 
 export function cubeToPixel(coord: CubeCoord, size: number, center: Point): Point {
   const x = center.x + size * (3 / 2) * coord.q
@@ -17,36 +27,6 @@ export function hexCorners(center: Point, size: number): Point[] {
     }
   })
 }
-
-export function standardBoardCoords(): CubeCoord[] {
-  const coords: CubeCoord[] = []
-  const layout = [3, 4, 5, 4, 3]
-  const rowOffsets = [-2, -1, 0, 1, 2]
-
-  for (let row = 0; row < 5; row++) {
-    const count = layout[row]
-    const r = rowOffsets[row]
-    const qStart = -Math.floor(count / 2)
-    for (let i = 0; i < count; i++) {
-      const q = qStart + i
-      const s = -q - r
-      coords.push({ q, r, s })
-    }
-  }
-
-  return coords
-}
-
-const TERRAIN_DISTRIBUTION: TerrainType[] = [
-  'food', 'food', 'food', 'food',
-  'supplies', 'supplies', 'supplies', 'supplies',
-  'tools', 'tools', 'tools', 'tools',
-  'weapons', 'weapons', 'weapons',
-  'ammo', 'ammo', 'ammo',
-  'desert',
-]
-
-const NUMBER_TOKENS = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
 
 export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -65,9 +45,13 @@ export function tileCenter(tile: HexTile, size: number, boardCenter: Point): Poi
   return cubeToPixel(tile.coord, size, boardCenter)
 }
 
-export function generateTiles(): Record<string, HexTile> {
-  const coords = standardBoardCoords()
-  const terrains = shuffle(TERRAIN_DISTRIBUTION)
+export function generateTiles(mapId: string = 'standard'): Record<string, HexTile> {
+  const config = getMapConfig(mapId)
+  return generateTilesFromConfig(config)
+}
+
+export function generateTilesFromConfig(config: MapConfig): Record<string, HexTile> {
+  const terrains = shuffle(config.terrains)
   const tiles: Record<string, HexTile> = {}
 
   let tokenIdx = 0
@@ -76,11 +60,11 @@ export function generateTiles(): Record<string, HexTile> {
     if (terrain === 'desert') {
       numbers.push(null)
     } else {
-      numbers.push(NUMBER_TOKENS[tokenIdx++] ?? null)
+      numbers.push(config.numberTokens[tokenIdx++] ?? null)
     }
   }
 
-  coords.forEach((coord, i) => {
+  config.coords.forEach((coord, i) => {
     const id = coordToId(coord)
     tiles[id] = {
       id,

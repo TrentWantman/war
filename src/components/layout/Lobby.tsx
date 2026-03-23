@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Trash2, Bot, User, Play, Shield } from 'lucide-react'
+import { Plus, Trash2, Bot, User, Play, Shield, Map } from 'lucide-react'
 import { useGameStore } from '../../store/gameStore'
 import { RESOURCE_LABELS, TERRAIN_LABELS, RESOURCE_COLORS } from '../../constants/resources'
+import { MAP_CONFIGS } from '../../utils/maps'
 import type { PlayerColor } from '../../types/game'
 
 const COLORS = [
@@ -20,6 +21,8 @@ interface LobbyPlayer {
 
 export function Lobby() {
   const setLobbyPlayers = useGameStore(s => s.setLobbyPlayers)
+  const setMapId = useGameStore(s => s.setMapId)
+  const selectedMapId = useGameStore(s => s.selectedMapId)
   const startGame = useGameStore(s => s.startGame)
 
   const [players, setPlayers] = useState<LobbyPlayer[]>([
@@ -180,6 +183,31 @@ export function Lobby() {
         )}
 
         <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <p className="text-xs font-bold text-white/30 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Map size={12} />
+            Map
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {MAP_CONFIGS.map(map => (
+              <button
+                key={map.id}
+                onClick={() => setMapId(map.id)}
+                className="p-2 rounded-lg text-left transition-all"
+                style={{
+                  background: selectedMapId === map.id ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${selectedMapId === map.id ? '#ef444460' : 'rgba(255,255,255,0.06)'}`,
+                }}
+              >
+                <div className={`text-xs font-bold ${selectedMapId === map.id ? 'text-red-400' : 'text-white/60'}`}>
+                  {map.name}
+                </div>
+                <div className="text-xs text-white/25">{map.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <p className="text-xs font-bold text-white/30 uppercase tracking-wider mb-3">Resources</p>
           <div className="grid grid-cols-5 gap-2">
             {resourceEntries.map(({ key, label, terrain, color }) => (

@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
-  cubeToPixel, hexCorners, standardBoardCoords, coordToId,
+  cubeToPixel, hexCorners, coordToId,
   generateTiles, generateVerticesAndEdges, shuffle,
   getVertexEdges, otherVertex, getAdjacentVertices, getHexVertices,
   HEX_SIZE,
 } from './hexGrid'
+import { getMapConfig } from './maps'
 import { BOARD_CENTER } from '../constants/colors'
 
 describe('cubeToPixel', () => {
@@ -39,15 +40,22 @@ describe('hexCorners', () => {
   })
 })
 
-describe('standardBoardCoords', () => {
+describe('standard map coords', () => {
   it('returns 19 coordinates', () => {
-    expect(standardBoardCoords().length).toBe(19)
+    const config = getMapConfig('standard')
+    expect(config.coords.length).toBe(19)
   })
 
   it('all coords satisfy q + r + s = 0', () => {
-    for (const coord of standardBoardCoords()) {
+    const config = getMapConfig('standard')
+    for (const coord of config.coords) {
       expect(coord.q + coord.r + coord.s).toBe(0)
     }
+  })
+
+  it('large map returns 37 coordinates', () => {
+    const config = getMapConfig('large')
+    expect(config.coords.length).toBe(37)
   })
 })
 
