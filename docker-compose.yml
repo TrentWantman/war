@@ -1,0 +1,25 @@
+services:
+  frontend:
+    build:
+      context: .
+      target: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      target: server
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
