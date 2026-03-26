@@ -37,7 +37,6 @@ export function useMultiplayer({ url, onMessage, enabled = true }: UseMultiplaye
         if (data.type === 'ping') return
         onMessageRef.current(data)
       } catch {
-        // ignore malformed messages
       }
     }
 

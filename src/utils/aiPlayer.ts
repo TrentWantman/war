@@ -26,12 +26,10 @@ function scoreVertex(vertexId: string, state: GameState): number {
     const tile = state.tiles[hexId]
     if (!tile || tile.terrain === 'desert' || !tile.number) continue
 
-    // Probability score: 6 and 8 are best at 5/36
     const num = tile.number
     const pip = num <= 7 ? num - 1 : 13 - num
     score += pip * 3
 
-    // Bonus for resource diversity
     score += 5
   }
 
@@ -138,7 +136,6 @@ function getSetupRouteAction(state: GameState, playerId: string): AIAction | nul
   )
   if (myVertices.length === 0) return null
 
-  // Find the outpost that doesn't have an adjacent road yet (the one just placed)
   for (const vertex of myVertices) {
     const adjEdges = Object.values(state.edges).filter(
       e => e.vertexIds.includes(vertex.id)
@@ -274,7 +271,6 @@ export function getAIDiscardSelection(state: GameState, playerId: string): Parti
   const needs = scoreResourceNeed(state, playerId)
   const resources: ResourceType[] = ['food', 'weapons', 'ammo', 'tools', 'supplies']
 
-  // Discard resources we need least first
   const sorted = resources
     .filter(r => player.resources[r] > 0)
     .sort((a, b) => needs[a] - needs[b])
