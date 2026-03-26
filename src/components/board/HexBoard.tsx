@@ -152,6 +152,16 @@ function drawHexTerrain(
   ctx.strokeStyle = isHovered ? '#ffffff' : 'rgba(0,0,0,0.5)'
   ctx.lineWidth = isHovered ? 3 : 2
   ctx.stroke()
+
+  const terrainNames: Record<string, string> = {
+    food: 'FIELDS', weapons: 'QUARRY', ammo: 'MOUNTAIN',
+    tools: 'FOREST', supplies: 'PASTURE', desert: 'DESERT',
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'
+  ctx.font = 'bold 7px monospace'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(terrainNames[tile.terrain] ?? '', center.x, center.y + size * 0.55)
 }
 
 function drawNumberToken(
