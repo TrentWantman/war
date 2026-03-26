@@ -166,9 +166,13 @@ export function ResourceCards() {
 
   if (!game) return null
 
-  const playerId = isMultiplayer && localPlayerId
-    ? localPlayerId
-    : game.playerOrder[game.currentPlayerIndex]
+  let playerId: string
+  if (isMultiplayer && localPlayerId) {
+    playerId = localPlayerId
+  } else {
+    const humanId = game.playerOrder.find(pid => !game.players[pid].isAI)
+    playerId = humanId ?? game.playerOrder[0]
+  }
   const player = game.players[playerId]
   if (!player) return null
 

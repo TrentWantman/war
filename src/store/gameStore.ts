@@ -742,9 +742,11 @@ export const useGameStore = create<GameStore>()(
     isMyTurn: () => {
       const { game, isMultiplayer, localPlayerId } = get()
       if (!game) return false
-      if (!isMultiplayer) return true
       const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
-      return currentPlayerId === localPlayerId
+      const currentPlayer = game.players[currentPlayerId]
+      if (currentPlayer.isAI) return false
+      if (isMultiplayer) return currentPlayerId === localPlayerId
+      return true
     },
   }))
 )
