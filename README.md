@@ -1,49 +1,41 @@
 # WAR
 
-A browser-based strategy game based on Catan with a military theme, playable solo against AI opponents or with multiple human players on the same machine.
+browser strategy game. military-themed catan with online multiplayer.
 
-## Screenshot
-
-![WAR lobby](screenshot.png)
-
-## Tech Stack
-
-- React 19 + TypeScript
-- Vite
-- Tailwind CSS v4
-- Zustand v5 (with Immer)
-- Framer Motion
-- HTML5 Canvas (hex board rendering)
-
-## Running It
+## run locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser.
+for online multiplayer, start the server:
 
-To build for production:
+```bash
+npm run server
+```
+
+## build
 
 ```bash
 npm run build
-npm run preview
 ```
 
-## How Multiplayer Works
+## deploy
 
-This is a local hot-seat game. Multiple humans can play on the same machine by setting players to "Human" in the lobby instead of "AI". Each player takes their turn on the same browser window. There is no networked multiplayer.
+```bash
+docker compose up -d
+```
 
-Up to 4 players are supported (any combination of human and AI).
+## test
 
-## Differences from Standard Catan
+```bash
+npm test
+```
 
-Resources are renamed with a military theme:
-- Wheat -> Food
-- Brick -> Weapons
-- Ore -> Ammo
-- Wood -> Tools
-- Sheep -> Supplies
+## play
 
-Building names are also renamed (settlements -> outposts, cities -> bases, roads -> supply routes). All rules, costs, and victory conditions are otherwise identical to standard Catan.
+- local or online
+- public lobbies or private room codes
+- 5 map layouts
+- 2-4 players
