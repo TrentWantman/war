@@ -285,95 +285,78 @@ const PORT_COLORS: Record<string, { text: string; color: string }> = {
   generic:  { text: '? 3:1', color: '#60a5fa' },
 }
 
-function drawPorts(ctx: CanvasRenderingContext2D, vertices: Record<string, Vertex>, bcx: number, bcy: number) {
-  const portVerts = Object.values(vertices).filter(v => v.portType)
+function drawPortLabel(
+  ctx: CanvasRenderingContext2D,
+  x1: number, y1: number,
+  x2: number, y2: number,
+  labelX: number, labelY: number,
+  info: { text: string; color: string }
+) {
+  ctx.strokeStyle = info.color
+  ctx.lineWidth = 2
+  ctx.setLineDash([3, 3])
+  ctx.beginPath()
+  ctx.moveTo(x1, y1)
+  ctx.lineTo(labelX, labelY)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(x2, y2)
+  ctx.lineTo(labelX, labelY)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  ctx.fillStyle = info.color + '30'
+  ctx.beginPath()
+  ctx.arc(x1, y1, 5, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(x2, y2, 5, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.fillStyle = '#0a0f1a'
+  ctx.strokeStyle = info.color
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(labelX, labelY, 16, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+
+  ctx.fillStyle = info.color
+  ctx.font = 'bold 8px monospace'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(info.text, labelX, labelY)
+}
+
+function drawPorts(
+  ctx: CanvasRenderingContext2D,
+  vertices: Record<string, Vertex>,
+  edges: Record<string, Edge>,
+  bcx: number,
+  bcy: number
+) {
   const drawn = new Set<string>()
 
-  for (const v of portVerts) {
-    if (drawn.has(v.id)) continue
-    drawn.add(v.id)
+  for (const edge of Object.values(edges)) {
+    const va = vertices[edge.vertexIds[0]]
+    const vb = vertices[edge.vertexIds[1]]
+    if (!va || !vb) continue
+    if (!va.portType || va.portType !== vb.portType) continue
+    if (drawn.has(edge.id)) continue
+    drawn.add(edge.id)
 
-    const partner = portVerts.find(
-      other => other.id !== v.id && other.portType === v.portType && !drawn.has(other.id)
-    )
-
-    const info = PORT_COLORS[v.portType!]
+    const info = PORT_COLORS[va.portType]
     if (!info) continue
 
-    if (partner) {
-      drawn.add(partner.id)
-      const midX = (v.position.x + partner.position.x) / 2
-      const midY = (v.position.y + partner.position.y) / 2
-      const dx = midX - bcx
-      const dy = midY - bcy
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      const labelX = midX + (dx / dist) * 30
-      const labelY = midY + (dy / dist) * 30
+    const midX = (va.position.x + vb.position.x) / 2
+    const midY = (va.position.y + vb.position.y) / 2
+    const dx = midX - bcx
+    const dy = midY - bcy
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const labelX = midX + (dx / dist) * 35
+    const labelY = midY + (dy / dist) * 35
 
-      ctx.strokeStyle = info.color
-      ctx.lineWidth = 2
-      ctx.setLineDash([3, 3])
-      ctx.beginPath()
-      ctx.moveTo(v.position.x, v.position.y)
-      ctx.lineTo(labelX, labelY)
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.moveTo(partner.position.x, partner.position.y)
-      ctx.lineTo(labelX, labelY)
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      ctx.fillStyle = info.color + '30'
-      ctx.beginPath()
-      ctx.arc(v.position.x, v.position.y, 5, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.beginPath()
-      ctx.arc(partner.position.x, partner.position.y, 5, 0, Math.PI * 2)
-      ctx.fill()
-
-      ctx.fillStyle = '#0a0f1a'
-      ctx.strokeStyle = info.color
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(labelX, labelY, 16, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-
-      ctx.fillStyle = info.color
-      ctx.font = 'bold 8px monospace'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(info.text, labelX, labelY)
-    } else {
-      const dx = v.position.x - bcx
-      const dy = v.position.y - bcy
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      const labelX = v.position.x + (dx / dist) * 28
-      const labelY = v.position.y + (dy / dist) * 28
-
-      ctx.strokeStyle = info.color
-      ctx.lineWidth = 2
-      ctx.setLineDash([3, 3])
-      ctx.beginPath()
-      ctx.moveTo(v.position.x, v.position.y)
-      ctx.lineTo(labelX, labelY)
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      ctx.fillStyle = '#0a0f1a'
-      ctx.strokeStyle = info.color
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(labelX, labelY, 16, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-
-      ctx.fillStyle = info.color
-      ctx.font = 'bold 8px monospace'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(info.text, labelX, labelY)
-    }
+    drawPortLabel(ctx, va.position.x, va.position.y, vb.position.x, vb.position.y, labelX, labelY, info)
   }
 }
 
@@ -464,7 +447,7 @@ export function HexBoard() {
       drawVertex(ctx, vertex, isValid, isHovered, phase, setupSubPhase, playerColorMap)
     }
 
-    drawPorts(ctx, vertices, BOARD_CENTER.x, BOARD_CENTER.y)
+    drawPorts(ctx, vertices, edges, BOARD_CENTER.x, BOARD_CENTER.y)
 
     ctx.restore()
   }, [game, localHoverId, validOutposts, validRoutes, validBases, hexSize, pan, zoom, getCanvasSize])

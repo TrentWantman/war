@@ -259,33 +259,41 @@ export function createInitialPlayers(
 
 export function assignPorts(
   vertices: Record<string, Vertex>,
-  _edges: Record<string, Edge>,
+  edges: Record<string, Edge>,
   _tiles: Record<string, HexTile>
 ): Record<string, Vertex> {
-  const borderVerts = Object.values(vertices)
-    .filter(v => v.hexIds.length === 1)
-    .sort((a, b) => {
-      const aAngle = Math.atan2(a.position.y - 300, a.position.x - 350)
-      const bAngle = Math.atan2(b.position.y - 300, b.position.x - 350)
-      return aAngle - bAngle
-    })
+  const borderEdges = Object.values(edges).filter(e => {
+    const va = vertices[e.vertexIds[0]]
+    const vb = vertices[e.vertexIds[1]]
+    if (!va || !vb) return false
+    const sharedHex = va.hexIds.some(h => vb.hexIds.includes(h))
+    const isBorder = va.hexIds.length <= 2 && vb.hexIds.length <= 2
+    return sharedHex && isBorder
+  })
+
+  const midAngle = (e: Edge) => {
+    const va = vertices[e.vertexIds[0]]
+    const vb = vertices[e.vertexIds[1]]
+    const mx = (va.position.x + vb.position.x) / 2
+    const my = (va.position.y + vb.position.y) / 2
+    return Math.atan2(my - 300, mx - 350)
+  }
+
+  borderEdges.sort((a, b) => midAngle(a) - midAngle(b))
 
   const portTypes: PortType[] = ['food', 'weapons', 'ammo', 'tools', 'supplies', 'generic', 'generic', 'generic', 'generic']
   const shuffledPorts = shuffle(portTypes)
 
   const updated = { ...vertices }
-  const totalBorder = borderVerts.length
   const portCount = shuffledPorts.length
-  const pairSpacing = Math.max(2, Math.floor(totalBorder / portCount))
+  const spacing = Math.max(1, Math.floor(borderEdges.length / portCount))
 
-  let portIdx = 0
-  let i = 0
-  while (portIdx < portCount && i < totalBorder - 1) {
-    const portType = shuffledPorts[portIdx]
-    updated[borderVerts[i].id] = { ...borderVerts[i], portType }
-    updated[borderVerts[i + 1].id] = { ...borderVerts[i + 1], portType }
-    i += pairSpacing
-    portIdx++
+  for (let p = 0; p < portCount; p++) {
+    const edgeIdx = (p * spacing) % borderEdges.length
+    const edge = borderEdges[edgeIdx]
+    const portType = shuffledPorts[p]
+    updated[edge.vertexIds[0]] = { ...updated[edge.vertexIds[0]], portType }
+    updated[edge.vertexIds[1]] = { ...updated[edge.vertexIds[1]], portType }
   }
 
   return updated

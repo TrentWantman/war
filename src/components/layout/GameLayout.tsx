@@ -174,58 +174,68 @@ export function GameLayout() {
             <div className="flex items-center gap-3">
             <DiceDisplay roll={game.lastRoll} />
 
-            <motion.button
-              whileHover={canRoll ? { scale: 1.02 } : {}}
-              whileTap={canRoll ? { scale: 0.98 } : {}}
-              onClick={rollDice}
-              disabled={!canRoll}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all"
-              style={{
-                background: canRoll
-                  ? 'linear-gradient(135deg, #1e40af, #1d4ed8)'
-                  : 'rgba(255,255,255,0.04)',
-                color: canRoll ? '#fff' : '#ffffff30',
-                border: `1px solid ${canRoll ? '#3b82f6' : 'rgba(255,255,255,0.06)'}`,
-                cursor: canRoll ? 'pointer' : 'not-allowed',
-              }}
-            >
-              <Dice5 size={16} />
-              Roll {canRoll && <span className="text-xs opacity-50">[R]</span>}
-            </motion.button>
-
-            {game.phase === 'playing' && myTurn && (
+            {myTurn ? (
               <>
-                {game.hasRolled && (
+                <motion.button
+                  whileHover={canRoll ? { scale: 1.02 } : {}}
+                  whileTap={canRoll ? { scale: 0.98 } : {}}
+                  onClick={rollDice}
+                  disabled={!canRoll}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all"
+                  style={{
+                    background: canRoll
+                      ? 'linear-gradient(135deg, #1e40af, #1d4ed8)'
+                      : 'rgba(255,255,255,0.04)',
+                    color: canRoll ? '#fff' : '#ffffff30',
+                    border: `1px solid ${canRoll ? '#3b82f6' : 'rgba(255,255,255,0.06)'}`,
+                    cursor: canRoll ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  <Dice5 size={16} />
+                  Roll {canRoll && <span className="text-xs opacity-50">[R]</span>}
+                </motion.button>
+
+                {game.phase === 'playing' && (
                   <>
-                    <div className="relative"><BuildMenu /></div>
-                    <div className="relative"><TradeMenu /></div>
+                    {game.hasRolled && (
+                      <>
+                        <div className="relative"><BuildMenu /></div>
+                        <div className="relative"><TradeMenu /></div>
+                      </>
+                    )}
+                    <div className="relative"><DevCardMenu /></div>
+                    <div className="relative"><PlayerTradeMenu /></div>
                   </>
                 )}
-                <div className="relative"><DevCardMenu /></div>
-                <div className="relative"><PlayerTradeMenu /></div>
+
+                <div className="flex-1" />
+
+                <motion.button
+                  whileHover={canEndTurn ? { scale: 1.02 } : {}}
+                  whileTap={canEndTurn ? { scale: 0.98 } : {}}
+                  onClick={endTurn}
+                  disabled={!canEndTurn}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all"
+                  style={{
+                    background: canEndTurn
+                      ? 'linear-gradient(135deg, #065f46, #047857)'
+                      : 'rgba(255,255,255,0.04)',
+                    color: canEndTurn ? '#fff' : '#ffffff30',
+                    border: `1px solid ${canEndTurn ? '#10b981' : 'rgba(255,255,255,0.06)'}`,
+                    cursor: canEndTurn ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  End Turn {canEndTurn && <span className="text-xs opacity-50">[E]</span>}
+                  <ChevronRight size={14} />
+                </motion.button>
               </>
+            ) : (
+              <div className="flex-1 text-center">
+                <span className="text-sm text-white/40">
+                  Waiting for {currentPlayer.name}...
+                </span>
+              </div>
             )}
-
-            <div className="flex-1" />
-
-            <motion.button
-              whileHover={canEndTurn ? { scale: 1.02 } : {}}
-              whileTap={canEndTurn ? { scale: 0.98 } : {}}
-              onClick={endTurn}
-              disabled={!canEndTurn}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all"
-              style={{
-                background: canEndTurn
-                  ? 'linear-gradient(135deg, #065f46, #047857)'
-                  : 'rgba(255,255,255,0.04)',
-                color: canEndTurn ? '#fff' : '#ffffff30',
-                border: `1px solid ${canEndTurn ? '#10b981' : 'rgba(255,255,255,0.06)'}`,
-                cursor: canEndTurn ? 'pointer' : 'not-allowed',
-              }}
-            >
-              End Turn {canEndTurn && <span className="text-xs opacity-50">[E]</span>}
-              <ChevronRight size={14} />
-            </motion.button>
             </div>
           </div>
         </div>
