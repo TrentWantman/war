@@ -1,9 +1,59 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { useShallow } from 'zustand/react/shallow'
-import { hexCorners, tileCenter, hexSizeForMap } from '../../utils/hexGrid'
+import { hexCorners, tileCenter, hexSizeForMap, cubeToPixel } from '../../utils/hexGrid'
 import { PLAYER_HEX_COLORS, BOARD_CENTER } from '../../constants/colors'
-import type { HexTile, Vertex, Edge, Point, PlayerColor } from '../../types/game'
+import type { HexTile, Vertex, Edge, Point, PlayerColor, CubeCoord } from '../../types/game'
+
+function getOceanCoords(landCoords: CubeCoord[]): CubeCoord[] {
+  const landSet = new Set(landCoords.map(c => `${c.q},${c.r},${c.s}`))
+  const oceanSet = new Set<string>()
+  const dirs = [[1,-1,0],[1,0,-1],[0,1,-1],[-1,1,0],[-1,0,1],[0,-1,1]]
+
+  for (const c of landCoords) {
+    for (const [dq, dr, ds] of dirs) {
+      const key = `${c.q+dq},${c.r+dr},${c.s+ds}`
+      if (!landSet.has(key)) oceanSet.add(key)
+    }
+  }
+
+  return [...oceanSet].map(k => {
+    const [q, r, s] = k.split(',').map(Number)
+    return { q, r, s }
+  })
+}
+
+function drawOceanHex(ctx: CanvasRenderingContext2D, center: Point, size: number) {
+  const verts = hexCorners(center, size)
+  ctx.beginPath()
+  ctx.moveTo(verts[0].x, verts[0].y)
+  for (let i = 1; i < 6; i++) ctx.lineTo(verts[i].x, verts[i].y)
+  ctx.closePath()
+  ctx.fillStyle = '#0c2d48'
+  ctx.fill()
+
+  ctx.save()
+  ctx.clip()
+  ctx.strokeStyle = '#1a4a6e'
+  ctx.lineWidth = 1
+  for (let y = center.y - size; y < center.y + size; y += 8) {
+    ctx.beginPath()
+    ctx.moveTo(center.x - size, y + Math.sin((center.x - size) * 0.05) * 3)
+    for (let x = center.x - size; x < center.x + size; x += 4) {
+      ctx.lineTo(x, y + Math.sin(x * 0.05 + y * 0.02) * 3)
+    }
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  ctx.beginPath()
+  ctx.moveTo(verts[0].x, verts[0].y)
+  for (let i = 1; i < 6; i++) ctx.lineTo(verts[i].x, verts[i].y)
+  ctx.closePath()
+  ctx.strokeStyle = '#0a1f33'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+}
 
 const TERRAIN_FILL: Record<string, { base: string; accent: string; pattern: string }> = {
   food:     { base: '#d4a017', accent: '#b8860b', pattern: '#c4950f' },
@@ -421,6 +471,13 @@ export function HexBoard() {
 
     const { tiles, vertices, edges, phase, setupSubPhase } = game
     const playerColorMap = buildPlayerColorMap(game.players)
+
+    const landCoords = Object.values(tiles).map(t => t.coord)
+    const oceanCoords = getOceanCoords(landCoords)
+    for (const coord of oceanCoords) {
+      const center = cubeToPixel(coord, hexSize, BOARD_CENTER)
+      drawOceanHex(ctx, center, hexSize)
+    }
 
     for (const tile of Object.values(tiles)) {
       const center = tileCenter(tile, hexSize, BOARD_CENTER)
