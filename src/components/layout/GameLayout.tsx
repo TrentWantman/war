@@ -162,7 +162,7 @@ export function GameLayout() {
                 </motion.div>
               )}
             </AnimatePresence>
-            <HexBoard width={700} height={560} />
+            <HexBoard />
           </div>
 
           <div

@@ -3,8 +3,16 @@ import { useGameStore } from '../../store/gameStore'
 import { useShallow } from 'zustand/react/shallow'
 import { hexCorners, tileCenter, hexSizeForMap } from '../../utils/hexGrid'
 import { PLAYER_HEX_COLORS, BOARD_CENTER } from '../../constants/colors'
-import { TERRAIN_COLORS } from '../../constants/resources'
 import type { HexTile, Vertex, Edge, Point, PlayerColor } from '../../types/game'
+
+const TERRAIN_FILL: Record<string, { base: string; accent: string; pattern: string }> = {
+  food:     { base: '#d4a017', accent: '#b8860b', pattern: '#c4950f' },
+  weapons:  { base: '#a83232', accent: '#8b2020', pattern: '#943838' },
+  ammo:     { base: '#6b7280', accent: '#4b5563', pattern: '#5c636e' },
+  tools:    { base: '#2d6a30', accent: '#1e4d20', pattern: '#3a7a3e' },
+  supplies: { base: '#4ade80', accent: '#22c55e', pattern: '#3dd070' },
+  desert:   { base: '#c4a56e', accent: '#a88b4a', pattern: '#b89858' },
+}
 
 function buildPlayerColorMap(players: Record<string, { color: PlayerColor }>): Record<string, string> {
   const map: Record<string, string> = {}
@@ -14,7 +22,7 @@ function buildPlayerColorMap(players: Record<string, { color: PlayerColor }>): R
   return map
 }
 
-function drawHex(
+function drawHexTerrain(
   ctx: CanvasRenderingContext2D,
   center: Point,
   size: number,
@@ -23,31 +31,77 @@ function drawHex(
   isRobberTarget: boolean
 ) {
   const verts = hexCorners(center, size)
-  const colors = TERRAIN_COLORS[tile.terrain]
+  const t = TERRAIN_FILL[tile.terrain] ?? TERRAIN_FILL.desert
 
   ctx.beginPath()
   ctx.moveTo(verts[0].x, verts[0].y)
   for (let i = 1; i < 6; i++) ctx.lineTo(verts[i].x, verts[i].y)
   ctx.closePath()
 
-  ctx.fillStyle = isRobberTarget ? colors.dark : colors.fill
+  ctx.fillStyle = isRobberTarget ? t.accent : t.base
   ctx.fill()
 
-  ctx.strokeStyle = isHovered ? '#ffffff' : 'rgba(0,0,0,0.4)'
-  ctx.lineWidth = isHovered ? 2.5 : 1.5
-  ctx.stroke()
-}
+  ctx.save()
+  ctx.clip()
 
-function drawTerrainLabel(ctx: CanvasRenderingContext2D, center: Point, terrain: string) {
-  const labels: Record<string, string> = {
-    food: 'FLD', weapons: 'QRY', ammo: 'MTN', tools: 'FOR', supplies: 'PST', desert: 'DST',
+  ctx.fillStyle = t.pattern
+  const step = 8
+  for (let py = center.y - size; py < center.y + size; py += step * 2) {
+    for (let px = center.x - size; px < center.x + size; px += step * 2) {
+      ctx.fillRect(px, py, step, step)
+    }
   }
-  const label = labels[terrain] ?? ''
-  ctx.font = 'bold 10px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'
-  ctx.fillText(label, center.x, center.y + (terrain === 'desert' ? 0 : -22))
+
+  if (tile.terrain === 'tools') {
+    ctx.fillStyle = '#1a5c1d'
+    for (let i = 0; i < 5; i++) {
+      const tx = center.x - 20 + i * 10
+      const ty = center.y - 15 + (i % 2) * 6
+      ctx.beginPath()
+      ctx.moveTo(tx, ty - 8)
+      ctx.lineTo(tx - 5, ty + 4)
+      ctx.lineTo(tx + 5, ty + 4)
+      ctx.closePath()
+      ctx.fill()
+    }
+  }
+
+  if (tile.terrain === 'food') {
+    ctx.strokeStyle = '#8b6914'
+    ctx.lineWidth = 1
+    for (let i = 0; i < 6; i++) {
+      const lx = center.x - 18 + i * 7
+      const ly = center.y + 10
+      ctx.beginPath()
+      ctx.moveTo(lx, ly)
+      ctx.lineTo(lx, ly - 12)
+      ctx.stroke()
+    }
+  }
+
+  if (tile.terrain === 'ammo') {
+    ctx.fillStyle = '#525960'
+    for (let i = 0; i < 3; i++) {
+      const mx = center.x - 12 + i * 12
+      const my = center.y - 10
+      ctx.beginPath()
+      ctx.moveTo(mx, my - 10)
+      ctx.lineTo(mx - 8, my + 6)
+      ctx.lineTo(mx + 8, my + 6)
+      ctx.closePath()
+      ctx.fill()
+    }
+  }
+
+  ctx.restore()
+
+  ctx.beginPath()
+  ctx.moveTo(verts[0].x, verts[0].y)
+  for (let i = 1; i < 6; i++) ctx.lineTo(verts[i].x, verts[i].y)
+  ctx.closePath()
+  ctx.strokeStyle = isHovered ? '#ffffff' : 'rgba(0,0,0,0.5)'
+  ctx.lineWidth = isHovered ? 3 : 2
+  ctx.stroke()
 }
 
 function drawNumberToken(
@@ -59,30 +113,32 @@ function drawNumberToken(
   if (hasRobber) {
     ctx.beginPath()
     ctx.arc(center.x, center.y, 16, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgba(0,0,0,0.75)'
+    ctx.fillStyle = '#1a1a1a'
     ctx.fill()
+    ctx.strokeStyle = '#ef4444'
+    ctx.lineWidth = 2
+    ctx.stroke()
     ctx.fillStyle = '#ef4444'
-    ctx.font = 'bold 14px sans-serif'
+    ctx.font = 'bold 16px monospace'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('R', center.x, center.y)
+    ctx.fillText('X', center.x, center.y)
     return
   }
   if (!number) return
 
   const isRed = number === 6 || number === 8
-  const radius = 18
 
   ctx.beginPath()
-  ctx.arc(center.x, center.y, radius, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(255,255,240,0.95)'
+  ctx.arc(center.x, center.y, 16, 0, Math.PI * 2)
+  ctx.fillStyle = '#f5f0dc'
   ctx.fill()
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)'
-  ctx.lineWidth = 1
+  ctx.strokeStyle = isRed ? '#dc2626' : '#444'
+  ctx.lineWidth = 2
   ctx.stroke()
 
   ctx.fillStyle = isRed ? '#dc2626' : '#1a1a1a'
-  ctx.font = `bold ${number >= 10 ? '13' : '15'}px sans-serif`
+  ctx.font = `bold ${number >= 10 ? '13' : '16'}px monospace`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(String(number), center.x, center.y - 1)
@@ -92,11 +148,46 @@ function drawNumberToken(
   const dotSpacing = 4
   const startX = center.x - ((dots - 1) * dotSpacing) / 2
   for (let i = 0; i < dots; i++) {
-    ctx.beginPath()
-    ctx.arc(startX + i * dotSpacing, dotY, 1.5, 0, Math.PI * 2)
-    ctx.fillStyle = isRed ? '#dc2626' : '#555'
-    ctx.fill()
+    ctx.fillRect(startX + i * dotSpacing - 1, dotY - 1, 2, 2)
   }
+}
+
+function drawOutpost(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(x, y - 12)
+  ctx.lineTo(x - 8, y - 4)
+  ctx.lineTo(x - 8, y + 8)
+  ctx.lineTo(x + 8, y + 8)
+  ctx.lineTo(x + 8, y - 4)
+  ctx.closePath()
+  ctx.fill()
+  ctx.strokeStyle = '#000'
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(x - 2, y, 4, 4)
+}
+
+function drawBase(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(x - 4, y - 14)
+  ctx.lineTo(x - 10, y - 6)
+  ctx.lineTo(x - 10, y + 8)
+  ctx.lineTo(x + 10, y + 8)
+  ctx.lineTo(x + 10, y - 6)
+  ctx.lineTo(x + 4, y - 14)
+  ctx.closePath()
+  ctx.fill()
+  ctx.strokeStyle = '#000'
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(x - 3, y - 2, 3, 5)
+  ctx.fillRect(x + 1, y - 2, 3, 5)
 }
 
 function drawVertex(
@@ -112,34 +203,10 @@ function drawVertex(
 
   if (building) {
     const color = playerColorMap[building.playerId] ?? '#888'
-
     if (building.type === 'outpost') {
-      ctx.beginPath()
-      ctx.arc(pos.x, pos.y, 9, 0, Math.PI * 2)
-      ctx.fillStyle = color
-      ctx.fill()
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-      ctx.stroke()
-      ctx.fillStyle = '#fff'
-      ctx.font = 'bold 9px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('O', pos.x, pos.y)
+      drawOutpost(ctx, pos.x, pos.y, color)
     } else {
-      ctx.beginPath()
-      const s = 10
-      ctx.rect(pos.x - s, pos.y - s, s * 2, s * 2)
-      ctx.fillStyle = color
-      ctx.fill()
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-      ctx.stroke()
-      ctx.fillStyle = '#fff'
-      ctx.font = 'bold 9px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('B', pos.x, pos.y)
+      drawBase(ctx, pos.x, pos.y, color)
     }
     return
   }
@@ -150,12 +217,14 @@ function drawVertex(
 
   if (showIndicator && isValid) {
     ctx.beginPath()
-    ctx.arc(pos.x, pos.y, isHovered ? 9 : 6, 0, Math.PI * 2)
-    ctx.fillStyle = isHovered ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)'
+    ctx.arc(pos.x, pos.y, isHovered ? 10 : 6, 0, Math.PI * 2)
+    ctx.fillStyle = isHovered ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)'
     ctx.fill()
-    ctx.strokeStyle = isHovered ? '#fff' : 'rgba(255,255,255,0.6)'
-    ctx.lineWidth = 1.5
-    ctx.stroke()
+    if (isHovered) {
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
   }
 }
 
@@ -178,15 +247,15 @@ function drawEdge(
     ctx.beginPath()
     ctx.moveTo(va.position.x, va.position.y)
     ctx.lineTo(vb.position.x, vb.position.y)
-    ctx.strokeStyle = color
-    ctx.lineWidth = 5
+    ctx.strokeStyle = '#000'
+    ctx.lineWidth = 8
     ctx.lineCap = 'round'
     ctx.stroke()
     ctx.beginPath()
     ctx.moveTo(va.position.x, va.position.y)
     ctx.lineTo(vb.position.x, vb.position.y)
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
-    ctx.lineWidth = 1
+    ctx.strokeStyle = color
+    ctx.lineWidth = 5
     ctx.stroke()
     return
   }
@@ -200,37 +269,58 @@ function drawEdge(
     ctx.beginPath()
     ctx.moveTo(va.position.x, va.position.y)
     ctx.lineTo(vb.position.x, vb.position.y)
-    ctx.strokeStyle = isHovered ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)'
-    ctx.lineWidth = isHovered ? 4 : 2.5
+    ctx.strokeStyle = isHovered ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.2)'
+    ctx.lineWidth = isHovered ? 5 : 3
     ctx.lineCap = 'round'
     ctx.stroke()
   }
 }
 
-function drawPort(ctx: CanvasRenderingContext2D, vertex: Vertex) {
+function drawPort(ctx: CanvasRenderingContext2D, vertex: Vertex, boardCenterX: number, boardCenterY: number) {
   if (!vertex.portType) return
   const { position: pos } = vertex
 
-  const portLabels: Record<string, string> = {
-    food: 'F 2:1', weapons: 'W 2:1', ammo: 'A 2:1',
-    tools: 'T 2:1', supplies: 'S 2:1', generic: '? 3:1',
+  const dx = pos.x - boardCenterX
+  const dy = pos.y - boardCenterY
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  const offsetX = (dx / dist) * 22
+  const offsetY = (dy / dist) * 22
+  const px = pos.x + offsetX
+  const py = pos.y + offsetY
+
+  const labels: Record<string, { text: string; color: string }> = {
+    food:     { text: 'F 2:1', color: '#d4a017' },
+    weapons:  { text: 'W 2:1', color: '#ef4444' },
+    ammo:     { text: 'A 2:1', color: '#9ca3af' },
+    tools:    { text: 'T 2:1', color: '#22c55e' },
+    supplies: { text: 'S 2:1', color: '#4ade80' },
+    generic:  { text: '? 3:1', color: '#60a5fa' },
   }
-  const label = portLabels[vertex.portType]
-  if (!label) return
+  const info = labels[vertex.portType]
+  if (!info) return
 
   ctx.beginPath()
-  ctx.arc(pos.x, pos.y, 13, 0, Math.PI * 2)
-  ctx.fillStyle = 'rgba(30, 40, 60, 0.9)'
+  ctx.moveTo(pos.x, pos.y)
+  ctx.lineTo(px, py)
+  ctx.strokeStyle = info.color
+  ctx.lineWidth = 2
+  ctx.setLineDash([3, 3])
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  ctx.fillStyle = '#0d1117'
+  ctx.strokeStyle = info.color
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(px, py, 14, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = '#60a5fa'
-  ctx.lineWidth = 1.5
   ctx.stroke()
 
-  ctx.fillStyle = '#e2e8f0'
-  ctx.font = '8px sans-serif'
+  ctx.fillStyle = info.color
+  ctx.font = 'bold 8px monospace'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(label, pos.x, pos.y)
+  ctx.fillText(info.text, px, py)
 }
 
 function pointToSegmentDist(p: Point, a: Point, b: Point): number {
@@ -243,14 +333,14 @@ function pointToSegmentDist(p: Point, a: Point, b: Point): number {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
 }
 
-interface HexBoardProps {
-  width?: number
-  height?: number
-}
-
-export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
+export function HexBoard() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [localHoverId, setLocalHoverId] = useState<{ type: 'vertex' | 'edge' | 'tile'; id: string } | null>(null)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [dragging, setDragging] = useState(false)
+  const lastMouseRef = useRef({ x: 0, y: 0 })
 
   const game = useGameStore(s => s.game)
   const selectedMapId = useGameStore(s => s.selectedMapId)
@@ -262,6 +352,12 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
   const clickEdge = useGameStore(s => s.clickEdge)
   const clickTile = useGameStore(s => s.clickTile)
 
+  const getCanvasSize = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return { w: 800, h: 600 }
+    return { w: container.clientWidth, h: container.clientHeight }
+  }, [])
+
   const draw = useCallback(() => {
     if (!game) return
     const canvas = canvasRef.current
@@ -269,37 +365,36 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    const { w, h } = getCanvasSize()
     const dpr = window.devicePixelRatio || 1
-    canvas.width = width * dpr
-    canvas.height = height * dpr
-    canvas.style.width = `${width}px`
-    canvas.style.height = `${height}px`
+    canvas.width = w * dpr
+    canvas.height = h * dpr
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${h}px`
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, width, height)
+    ctx.clearRect(0, 0, w, h)
+
+    ctx.fillStyle = '#0a0f1a'
+    ctx.fillRect(0, 0, w, h)
+
+    ctx.save()
+    ctx.translate(w / 2 + pan.x, h / 2 + pan.y)
+    ctx.scale(zoom, zoom)
+    ctx.translate(-BOARD_CENTER.x, -BOARD_CENTER.y)
 
     const { tiles, vertices, edges, phase, setupSubPhase } = game
     const playerColorMap = buildPlayerColorMap(game.players)
-
-    ctx.fillStyle = '#0a192f'
-    ctx.fillRect(0, 0, width, height)
 
     for (const tile of Object.values(tiles)) {
       const center = tileCenter(tile, hexSize, BOARD_CENTER)
       const isHovered = localHoverId?.type === 'tile' && localHoverId.id === tile.id
       const isRobberTarget = phase === 'robber' && isHovered
-      drawHex(ctx, center, hexSize, tile, isHovered, isRobberTarget)
+      drawHexTerrain(ctx, center, hexSize, tile, isHovered, isRobberTarget)
     }
 
     for (const tile of Object.values(tiles)) {
       const center = tileCenter(tile, hexSize, BOARD_CENTER)
-      drawTerrainLabel(ctx, center, tile.terrain)
       drawNumberToken(ctx, center, tile.number, tile.hasRobber)
-    }
-
-    for (const vertex of Object.values(vertices)) {
-      if (vertex.hexIds.length <= 2 && vertex.portType) {
-        drawPort(ctx, vertex)
-      }
     }
 
     for (const edge of Object.values(edges)) {
@@ -314,20 +409,40 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
       const isHovered = localHoverId?.type === 'vertex' && localHoverId.id === vertex.id
       drawVertex(ctx, vertex, isValid, isHovered, phase, setupSubPhase, playerColorMap)
     }
-  }, [game, localHoverId, validOutposts, validRoutes, validBases, width, height, hexSize])
+
+    for (const vertex of Object.values(vertices)) {
+      if (vertex.portType) {
+        drawPort(ctx, vertex, BOARD_CENTER.x, BOARD_CENTER.y)
+      }
+    }
+
+    ctx.restore()
+  }, [game, localHoverId, validOutposts, validRoutes, validBases, hexSize, pan, zoom, getCanvasSize])
 
   useEffect(() => { draw() }, [draw])
 
-  const hitTestCanvas = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!game) return null
-    const canvas = canvasRef.current
-    if (!canvas) return null
-    const rect = canvas.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width / dpr)
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height / dpr)
+  useEffect(() => {
+    const handleResize = () => draw()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [draw])
 
-    const { vertices, edges, tiles, phase } = game
+  const screenToWorld = useCallback((clientX: number, clientY: number): Point => {
+    const canvas = canvasRef.current
+    if (!canvas) return { x: 0, y: 0 }
+    const rect = canvas.getBoundingClientRect()
+    const { w, h } = getCanvasSize()
+    const sx = (clientX - rect.left) * (w / rect.width)
+    const sy = (clientY - rect.top) * (h / rect.height)
+    const wx = (sx - w / 2 - pan.x) / zoom + BOARD_CENTER.x
+    const wy = (sy - h / 2 - pan.y) / zoom + BOARD_CENTER.y
+    return { x: wx, y: wy }
+  }, [pan, zoom, getCanvasSize])
+
+  const hitTest = useCallback((clientX: number, clientY: number) => {
+    if (!game) return null
+    const { x, y } = screenToWorld(clientX, clientY)
+    const { vertices, edges, tiles, phase, setupSubPhase } = game
 
     if (phase === 'robber') {
       for (const tile of Object.values(tiles)) {
@@ -341,13 +456,12 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
       return null
     }
 
-    const { setupSubPhase } = game
     const showVertices = (phase === 'setup' && setupSubPhase === 'place_outpost') || phase === 'playing'
     if (showVertices) {
       for (const vertex of Object.values(vertices)) {
         const dx = x - vertex.position.x
         const dy = y - vertex.position.y
-        if (Math.sqrt(dx * dx + dy * dy) < 12) {
+        if (Math.sqrt(dx * dx + dy * dy) < 14 / zoom) {
           return { type: 'vertex' as const, id: vertex.id }
         }
       }
@@ -360,22 +474,51 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
         const vb = vertices[edge.vertexIds[1]]
         if (!va || !vb) continue
         const dist = pointToSegmentDist({ x, y }, va.position, vb.position)
-        if (dist < 8) {
+        if (dist < 10 / zoom) {
           return { type: 'edge' as const, id: edge.id }
         }
       }
     }
 
     return null
-  }, [game])
+  }, [game, hexSize, screenToWorld, zoom])
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const hit = hitTestCanvas(e)
+    if (dragging) {
+      const dx = e.clientX - lastMouseRef.current.x
+      const dy = e.clientY - lastMouseRef.current.y
+      setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }))
+      lastMouseRef.current = { x: e.clientX, y: e.clientY }
+      return
+    }
+    const hit = hitTest(e.clientX, e.clientY)
     setLocalHoverId(hit)
-  }, [hitTestCanvas])
+  }, [dragging, hitTest])
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button === 1 || e.button === 2) {
+      setDragging(true)
+      lastMouseRef.current = { x: e.clientX, y: e.clientY }
+      e.preventDefault()
+    }
+  }, [])
+
+  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (dragging) {
+      setDragging(false)
+      e.preventDefault()
+    }
+  }, [dragging])
 
   const handleMouseLeave = useCallback(() => {
     setLocalHoverId(null)
+    setDragging(false)
+  }, [])
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    setZoom(prev => Math.max(0.3, Math.min(3, prev * delta)))
   }, [])
 
   const isMyTurn = useGameStore(s => s.isMyTurn)
@@ -385,21 +528,31 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
     const currentPlayer = game.players[game.playerOrder[game.currentPlayerIndex]]
     if (currentPlayer.isAI) return
     if (!isMyTurn()) return
-    const hit = hitTestCanvas(e)
+    const hit = hitTest(e.clientX, e.clientY)
     if (!hit) return
     if (hit.type === 'vertex') clickVertex(hit.id)
     else if (hit.type === 'edge') clickEdge(hit.id)
     else if (hit.type === 'tile') clickTile(hit.id)
-  }, [game, hitTestCanvas, clickVertex, clickEdge, clickTile, isMyTurn])
+  }, [game, hitTest, clickVertex, clickEdge, clickTile, isMyTurn])
 
   return (
-    <canvas
-      ref={canvasRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
-      style={{ cursor: localHoverId ? 'pointer' : 'default', display: 'block' }}
-      className="rounded-xl border border-white/10 shadow-2xl"
-    />
+    <div ref={containerRef} className="w-full h-full">
+      <canvas
+        ref={canvasRef}
+        onMouseMove={handleMouseMove}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onWheel={handleWheel}
+        onContextMenu={e => e.preventDefault()}
+        onClick={handleClick}
+        style={{
+          cursor: dragging ? 'grabbing' : localHoverId ? 'pointer' : 'grab',
+          display: 'block',
+          width: '100%',
+          height: '100%',
+        }}
+      />
+    </div>
   )
 }
