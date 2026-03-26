@@ -156,6 +156,29 @@ export function GameLayout() {
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 flex items-center justify-center overflow-hidden relative">
             <AnimatePresence>
+              {isSetup && myTurn && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2"
+                  style={{ background: '#1e3a5f', border: '1px solid #3b82f6', color: '#93c5fd' }}
+                >
+                  <Target size={14} />
+                  {setupHint}
+                </motion.div>
+              )}
+              {isSetup && !myTurn && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 rounded-full font-bold text-sm"
+                  style={{ background: '#1a1a2e', border: '1px solid #30363d', color: '#9ca3af' }}
+                >
+                  {currentPlayer.name} is placing...
+                </motion.div>
+              )}
               {game.phase === 'robber' && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -165,7 +188,7 @@ export function GameLayout() {
                   style={{ background: '#7f1d1d', border: '1px solid #ef4444', color: '#fecaca' }}
                 >
                   <AlertTriangle size={14} />
-                  Click a hex to move the robber
+                  {myTurn ? 'Click a hex to move the robber' : `${currentPlayer.name} is moving the robber...`}
                 </motion.div>
               )}
             </AnimatePresence>
