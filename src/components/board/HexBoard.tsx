@@ -3,25 +3,8 @@ import { useGameStore } from '../../store/gameStore'
 import { useShallow } from 'zustand/react/shallow'
 import { hexCorners, tileCenter, hexSizeForMap, cubeToPixel } from '../../utils/hexGrid'
 import { PLAYER_HEX_COLORS, BOARD_CENTER } from '../../constants/colors'
-import type { HexTile, Vertex, Edge, Point, PlayerColor, CubeCoord } from '../../types/game'
+import type { HexTile, Vertex, Edge, Point, PlayerColor } from '../../types/game'
 
-function getOceanCoords(landCoords: CubeCoord[]): CubeCoord[] {
-  const landSet = new Set(landCoords.map(c => `${c.q},${c.r},${c.s}`))
-  const oceanSet = new Set<string>()
-  const dirs = [[1,-1,0],[1,0,-1],[0,1,-1],[-1,1,0],[-1,0,1],[0,-1,1]]
-
-  for (const c of landCoords) {
-    for (const [dq, dr, ds] of dirs) {
-      const key = `${c.q+dq},${c.r+dr},${c.s+ds}`
-      if (!landSet.has(key)) oceanSet.add(key)
-    }
-  }
-
-  return [...oceanSet].map(k => {
-    const [q, r, s] = k.split(',').map(Number)
-    return { q, r, s }
-  })
-}
 
 function drawOceanHex(ctx: CanvasRenderingContext2D, center: Point, size: number) {
   const verts = hexCorners(center, size)
@@ -471,7 +454,7 @@ export function HexBoard() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, w, h)
 
-    ctx.fillStyle = '#0a0f1a'
+    ctx.fillStyle = '#081020'
     ctx.fillRect(0, 0, w, h)
 
     ctx.save()
@@ -482,11 +465,15 @@ export function HexBoard() {
     const { tiles, vertices, edges, phase, setupSubPhase } = game
     const playerColorMap = buildPlayerColorMap(game.players)
 
-    const landCoords = Object.values(tiles).map(t => t.coord)
-    const oceanCoords = getOceanCoords(landCoords)
-    for (const coord of oceanCoords) {
-      const center = cubeToPixel(coord, hexSize, BOARD_CENTER)
-      drawOceanHex(ctx, center, hexSize)
+    const landSet = new Set(Object.values(tiles).map(t => `${t.coord.q},${t.coord.r},${t.coord.s}`))
+    const viewRadius = Math.ceil(((w / 2) / zoom + Math.abs(pan.x) / zoom) / (hexSize * 1.5)) + 3
+    for (let q = -viewRadius; q <= viewRadius; q++) {
+      for (let r = -viewRadius; r <= viewRadius; r++) {
+        const s = -q - r
+        if (landSet.has(`${q},${r},${s}`)) continue
+        const center = cubeToPixel({ q, r, s }, hexSize, BOARD_CENTER)
+        drawOceanHex(ctx, center, hexSize)
+      }
     }
 
     for (const tile of Object.values(tiles)) {
