@@ -15,6 +15,7 @@ import { StealModal } from '../game/StealModal'
 import { WinScreen } from '../game/WinScreen'
 import { PlayerTradeMenu, TradeResponseBanner } from '../game/PlayerTradeMenu'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
+import { ResourceCards } from '../ui/ResourceCards'
 
 const PHASE_LABELS: Record<string, string> = {
   setup: 'Initial Placement',
@@ -166,9 +167,11 @@ export function GameLayout() {
           </div>
 
           <div
-            className="flex-shrink-0 px-4 py-2 flex items-center gap-3"
+            className="flex-shrink-0 px-3 py-2 flex flex-col gap-2"
             style={{ background: '#161b22', borderTop: '1px solid #21262d' }}
           >
+            <ResourceCards />
+            <div className="flex items-center gap-3">
             <DiceDisplay roll={game.lastRoll} />
 
             <motion.button
@@ -223,6 +226,7 @@ export function GameLayout() {
               End Turn {canEndTurn && <span className="text-xs opacity-50">[E]</span>}
               <ChevronRight size={14} />
             </motion.button>
+            </div>
           </div>
         </div>
 

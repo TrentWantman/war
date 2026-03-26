@@ -276,12 +276,16 @@ export function assignPorts(
   const updated = { ...vertices }
   const totalBorder = borderVerts.length
   const portCount = shuffledPorts.length
-  const spacing = Math.floor(totalBorder / portCount)
+  const pairSpacing = Math.max(2, Math.floor(totalBorder / portCount))
 
-  for (let p = 0; p < portCount; p++) {
-    const idx = (p * spacing) % totalBorder
-    const portType = shuffledPorts[p]
-    updated[borderVerts[idx].id] = { ...borderVerts[idx], portType }
+  let portIdx = 0
+  let i = 0
+  while (portIdx < portCount && i < totalBorder - 1) {
+    const portType = shuffledPorts[portIdx]
+    updated[borderVerts[i].id] = { ...borderVerts[i], portType }
+    updated[borderVerts[i + 1].id] = { ...borderVerts[i + 1], portType }
+    i += pairSpacing
+    portIdx++
   }
 
   return updated
