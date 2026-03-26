@@ -533,10 +533,16 @@ export function HexBoard() {
     return null
   }, [game, hexSize, screenToWorld, zoom])
 
+  const dragStartRef = useRef({ x: 0, y: 0 })
+  const didDragRef = useRef(false)
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (dragging) {
       const dx = e.clientX - lastMouseRef.current.x
       const dy = e.clientY - lastMouseRef.current.y
+      if (Math.abs(e.clientX - dragStartRef.current.x) > 4 || Math.abs(e.clientY - dragStartRef.current.y) > 4) {
+        didDragRef.current = true
+      }
       setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }))
       lastMouseRef.current = { x: e.clientX, y: e.clientY }
       return
@@ -546,19 +552,16 @@ export function HexBoard() {
   }, [dragging, hitTest])
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button === 1 || e.button === 2) {
-      setDragging(true)
-      lastMouseRef.current = { x: e.clientX, y: e.clientY }
-      e.preventDefault()
-    }
+    setDragging(true)
+    lastMouseRef.current = { x: e.clientX, y: e.clientY }
+    dragStartRef.current = { x: e.clientX, y: e.clientY }
+    didDragRef.current = false
+    if (e.button !== 0) e.preventDefault()
   }, [])
 
-  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (dragging) {
-      setDragging(false)
-      e.preventDefault()
-    }
-  }, [dragging])
+  const handleMouseUp = useCallback(() => {
+    setDragging(false)
+  }, [])
 
   const handleMouseLeave = useCallback(() => {
     setLocalHoverId(null)
@@ -567,13 +570,14 @@ export function HexBoard() {
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    const delta = e.deltaY > 0 ? 0.96 : 1.04
     setZoom(prev => Math.max(0.3, Math.min(3, prev * delta)))
   }, [])
 
   const isMyTurn = useGameStore(s => s.isMyTurn)
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (didDragRef.current) return
     if (!game) return
     const currentPlayer = game.players[game.playerOrder[game.currentPlayerIndex]]
     if (currentPlayer.isAI) return
