@@ -2,8 +2,6 @@
 
 browser strategy game. military-themed catan with online multiplayer.
 
-play now: https://war-frontend-production.up.railway.app
-
 ## run locally
 
 ```bash
