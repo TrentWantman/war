@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useGameStore } from './store/gameStore'
 import { useMultiplayer } from './hooks/useMultiplayer'
 import { Lobby } from './components/layout/Lobby'
 import { OnlineLobby } from './components/layout/OnlineLobby'
 import { GameLayout } from './components/layout/GameLayout'
+import type { GameState } from './types/game'
 
 type AppMode = 'menu' | 'local' | 'online'
 
@@ -44,6 +45,10 @@ function App() {
     publicRooms: [],
   })
 
+  const sendRef = useCallback((msg: Record<string, unknown>) => {
+    sendWs(msg)
+  }, [])
+
   const onMessage = useCallback((msg: { type: string; [key: string]: unknown }) => {
     switch (msg.type) {
       case 'room_created':
@@ -61,20 +66,43 @@ function App() {
       case 'room_list':
         setRoomState(prev => ({ ...prev, publicRooms: msg.rooms as PublicRoomInfo[] }))
         break
-      case 'game_started':
-        useGameStore.getState().startGame()
+      case 'game_started': {
+        const store = useGameStore.getState()
+        const pid = roomState.playerId
+        if (pid) {
+          store.setMultiplayer(pid, (gameState: GameState) => {
+            sendRef({ type: 'state_sync', gameState })
+          })
+        }
+        store.startGame()
         break
+      }
+      case 'state_sync': {
+        const store = useGameStore.getState()
+        if (!store.isMultiplayer) break
+        const incomingState = msg.gameState as GameState
+        if (incomingState) {
+          store.receiveGameState(incomingState)
+        }
+        break
+      }
       case 'error':
         setRoomState(prev => ({ ...prev, error: msg.message as string }))
         break
     }
-  }, [])
+  }, [roomState.playerId, sendRef])
 
-  const { status, send } = useMultiplayer({
+  const { status, send: sendWs } = useMultiplayer({
     url: WS_URL,
     onMessage,
     enabled: mode === 'online',
   })
+
+  useEffect(() => {
+    if (mode !== 'online') {
+      useGameStore.getState().clearMultiplayer()
+    }
+  }, [mode])
 
   if (game) {
     return <GameLayout />
@@ -95,16 +123,16 @@ function App() {
       playerId={roomState.playerId}
       error={roomState.error}
       publicRooms={roomState.publicRooms}
-      onCreateRoom={(name, isPrivate) => send({ type: 'create_room', playerName: name, isPrivate })}
-      onJoinRoom={(code, name) => send({ type: 'join_room', roomCode: code, playerName: name })}
-      onJoinRoomById={(roomId, name) => send({ type: 'join_room_by_id', roomId, playerName: name })}
-      onToggleReady={() => send({ type: 'toggle_ready' })}
-      onStartGame={() => send({ type: 'start_game' })}
+      onCreateRoom={(name, isPrivate) => sendWs({ type: 'create_room', playerName: name, isPrivate })}
+      onJoinRoom={(code, name) => sendWs({ type: 'join_room', roomCode: code, playerName: name })}
+      onJoinRoomById={(roomId, name) => sendWs({ type: 'join_room_by_id', roomId, playerName: name })}
+      onToggleReady={() => sendWs({ type: 'toggle_ready' })}
+      onStartGame={() => sendWs({ type: 'start_game' })}
       onLeaveRoom={() => {
-        send({ type: 'leave_room' })
+        sendWs({ type: 'leave_room' })
         setRoomState({ room: null, playerId: null, error: null, publicRooms: roomState.publicRooms })
       }}
-      onRefreshRooms={() => send({ type: 'list_rooms' })}
+      onRefreshRooms={() => sendWs({ type: 'list_rooms' })}
       onBack={() => {
         setRoomState({ room: null, playerId: null, error: null, publicRooms: [] })
         setMode('menu')

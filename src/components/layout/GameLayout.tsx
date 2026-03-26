@@ -146,14 +146,14 @@ export function GameLayout() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+        <div className="flex-1 flex items-center justify-center p-4 overflow-hidden relative">
           <AnimatePresence>
             {game.phase === 'robber' && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute top-16 left-1/2 -translate-x-1/2 z-10 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2"
+                className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2"
                 style={{ background: '#7f1d1d', border: '1px solid #ef4444', color: '#fecaca' }}
               >
                 <AlertTriangle size={14} />
@@ -165,10 +165,10 @@ export function GameLayout() {
         </div>
 
         <div
-          className="w-64 flex-shrink-0 flex flex-col"
+          className="w-64 flex-shrink-0 flex flex-col overflow-visible"
           style={{ borderLeft: '1px solid #21262d' }}
         >
-          <div className="p-3 flex-shrink-0" style={{ borderBottom: '1px solid #21262d' }}>
+          <div className="p-3 flex-shrink-0 relative z-20" style={{ borderBottom: '1px solid #21262d' }}>
             <div className="mb-3">
               <div className="text-xs font-bold text-white/30 uppercase tracking-wider mb-2">Dice</div>
               <DiceDisplay roll={game.lastRoll} />

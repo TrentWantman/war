@@ -37,6 +37,7 @@ export type ClientMessage =
   | { type: 'start_game' }
   | { type: 'list_rooms' }
   | { type: 'game_action'; action: string; payload: Record<string, unknown> }
+  | { type: 'state_sync'; gameState: unknown }
   | { type: 'chat'; message: string }
 
 export type ServerMessage =
@@ -48,6 +49,7 @@ export type ServerMessage =
   | { type: 'player_left'; playerId: string }
   | { type: 'game_started'; seed: number }
   | { type: 'game_action'; action: string; payload: Record<string, unknown>; fromPlayerId: string }
+  | { type: 'state_sync'; gameState: unknown; fromPlayerId: string }
   | { type: 'chat'; message: string; fromPlayerId: string; playerName: string }
   | { type: 'error'; message: string }
   | { type: 'ping' }

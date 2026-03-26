@@ -26,9 +26,14 @@ export function useAIPlayer() {
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const isMultiplayer = useGameStore(s => s.isMultiplayer)
+  const localPlayerId = useGameStore(s => s.localPlayerId)
+
   useEffect(() => {
     if (!game) return
     if (game.phase === 'game_over') return
+
+    if (isMultiplayer && localPlayerId !== game.playerOrder[0]) return
 
     const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
     const currentPlayer = game.players[currentPlayerId]
@@ -155,7 +160,7 @@ export function useAIPlayer() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [
     game,
-    discardTarget,
+    discardTarget, isMultiplayer, localPlayerId,
     rollDice, endTurn, buildRoute, buildOutpost, buildBase,
     buyDevCard, bankTrade, playDevCard, clickVertex, clickEdge, clickTile,
     updateDiscardSelection, confirmDiscard, respondTrade,

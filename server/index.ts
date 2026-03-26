@@ -7,7 +7,7 @@ const PORT = parseInt(process.env.PORT ?? '3001', 10)
 const PLAYER_COLORS = ['red', 'blue', 'green', 'orange']
 const ROOM_TTL_MS = 4 * 60 * 60 * 1000
 const MAX_ROOMS = 5000
-const MAX_MESSAGE_SIZE = 4096
+const MAX_MESSAGE_SIZE = 131072
 
 const rooms = new Map<string, Room>()
 const clientRooms = new Map<WebSocket, { roomId: string; playerId: string }>()
@@ -198,6 +198,18 @@ function handleGameAction(ws: WebSocket, action: string, payload: Record<string,
   }, ws)
 }
 
+function handleStateSync(ws: WebSocket, gameState: unknown): void {
+  const info = clientRooms.get(ws)
+  if (!info) return
+  const room = rooms.get(info.roomId)
+  if (!room || room.state !== 'playing') return
+  broadcast(room.id, {
+    type: 'state_sync',
+    gameState,
+    fromPlayerId: info.playerId,
+  }, ws)
+}
+
 function handleChat(ws: WebSocket, message: string): void {
   const info = clientRooms.get(ws)
   if (!info) return
@@ -251,6 +263,9 @@ function handleMessage(ws: WebSocket, raw: string): void {
       break
     case 'game_action':
       handleGameAction(ws, message.action, message.payload)
+      break
+    case 'state_sync':
+      handleStateSync(ws, message.gameState)
       break
     case 'chat':
       handleChat(ws, message.message)

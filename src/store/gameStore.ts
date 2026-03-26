@@ -41,6 +41,14 @@ interface GameStore {
   yearOfPlentySelections: ResourceType[]
   game: GameState | null
 
+  isMultiplayer: boolean
+  localPlayerId: string | null
+  onStateChange: ((state: GameState) => void) | null
+
+  setMultiplayer: (playerId: string, onSync: (state: GameState) => void) => void
+  clearMultiplayer: () => void
+  receiveGameState: (state: GameState) => void
+
   setLobbyPlayers: (players: LobbyPlayer[]) => void
   setMapId: (mapId: string) => void
   startGame: () => void
@@ -105,6 +113,26 @@ export const useGameStore = create<GameStore>()(
     discardSelections: { ...EMPTY_RESOURCES },
     yearOfPlentySelections: [],
     game: null,
+
+    isMultiplayer: false,
+    localPlayerId: null,
+    onStateChange: null,
+
+    setMultiplayer: (playerId, onSync) => set(s => {
+      s.isMultiplayer = true
+      s.localPlayerId = playerId
+      s.onStateChange = onSync as typeof s.onStateChange
+    }),
+
+    clearMultiplayer: () => set(s => {
+      s.isMultiplayer = false
+      s.localPlayerId = null
+      s.onStateChange = null
+    }),
+
+    receiveGameState: (state) => set(s => {
+      s.game = state as typeof s.game
+    }),
 
     setLobbyPlayers: (players) => set(s => { s.lobbyPlayers = players }),
     setMapId: (mapId) => set(s => { s.selectedMapId = mapId }),
@@ -668,3 +696,12 @@ export const useGameStore = create<GameStore>()(
     },
   }))
 )
+
+let lastGameJson = ''
+useGameStore.subscribe((state) => {
+  if (!state.isMultiplayer || !state.game || !state.onStateChange) return
+  const json = JSON.stringify(state.game)
+  if (json === lastGameJson) return
+  lastGameJson = json
+  state.onStateChange(state.game)
+})
