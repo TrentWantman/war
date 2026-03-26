@@ -66,7 +66,7 @@ export function DevCardMenu() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full mt-2 left-0 w-72 rounded-xl p-4 z-50"
+            className="absolute bottom-full mb-2 left-0 w-72 rounded-xl p-4 z-50"
             style={{ background: '#0d1117', border: '1px solid #30363d', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}
           >
             <div className="flex items-center justify-between mb-3">

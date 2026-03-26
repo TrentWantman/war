@@ -4,7 +4,7 @@ import { getAIAction, getAIRobberTile, getAIDiscardSelection } from '../utils/ai
 import { totalResources } from '../utils/gameLogic'
 import type { ResourceType } from '../types/game'
 
-const AI_DELAY_MS = 800
+const AI_DELAY_MS = 2000
 
 export function useAIPlayer() {
   const game = useGameStore(s => s.game)
@@ -82,7 +82,9 @@ export function useAIPlayer() {
             if (canAffordRequest) {
               const gainValue = totalResources(trade.offering)
               const loseValue = totalResources(trade.requesting)
-              if (gainValue >= loseValue) {
+              const hasExcess = (Object.entries(trade.requesting) as [ResourceType, number][])
+                .every(([r, amt]) => aiPlayer.resources[r] >= amt + 2)
+              if (gainValue > loseValue || (gainValue === loseValue && hasExcess && Math.random() > 0.5)) {
                 const store = useGameStore.getState()
                 if (store.game?.activeTrade) {
                   store.game.activeTrade.toPlayerId = aiId
@@ -94,7 +96,7 @@ export function useAIPlayer() {
           }
 
           useGameStore.getState().respondTrade(false)
-        }, AI_DELAY_MS)
+        }, AI_DELAY_MS * 2)
         return () => { if (timerRef.current) clearTimeout(timerRef.current) }
       }
     }

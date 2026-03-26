@@ -231,12 +231,32 @@ export const useGameStore = create<GameStore>()(
       if (!vertex) return
 
       if (vertex.building?.playerId === playerId && vertex.building.type === 'outpost') {
-        get().buildBase(id)
+        const player = game.players[playerId]
+        const counts = countPlayerBuildings(game, playerId)
+        if (counts.bases >= BUILDING_LIMITS.base) return
+        if (!canPlaceBase(id, playerId, game)) return
+        if (!canAfford(player, COSTS.base)) return
+        game.players[playerId].resources = subtractResources(player.resources, COSTS.base)
+        game.vertices[id].building = { type: 'base', playerId }
+        game.log.push(addLog(game, `${player.name} upgraded to a base`, playerId))
+        checkWinner(game)
         return
       }
 
-      if (!vertex.building && canPlaceOutpost(id, playerId, game, false) && canAfford(game.players[playerId], COSTS.outpost)) {
-        get().buildOutpost(id)
+      if (!vertex.building) {
+        const player = game.players[playerId]
+        const counts = countPlayerBuildings(game, playerId)
+        if (counts.outposts >= BUILDING_LIMITS.outpost) return
+        if (!canPlaceOutpost(id, playerId, game, false)) return
+        if (!canAfford(player, COSTS.outpost)) return
+        game.players[playerId].resources = subtractResources(player.resources, COSTS.outpost)
+        game.vertices[id].building = { type: 'outpost', playerId }
+        const v = game.vertices[id]
+        if (v.portType && !game.players[playerId].ports.includes(v.portType)) {
+          game.players[playerId].ports.push(v.portType)
+        }
+        game.log.push(addLog(game, `${player.name} built an outpost`, playerId))
+        checkWinner(game)
       }
     }),
 
@@ -244,20 +264,43 @@ export const useGameStore = create<GameStore>()(
       if (!s.game) return
       const game = s.game
       const playerId = game.playerOrder[game.currentPlayerIndex]
+      const player = game.players[playerId]
 
       if (game.phase === 'setup' && game.setupSubPhase === 'place_route') {
         const setupVertex = s.setupOutpostVertexId ?? undefined
         if (!canPlaceRoad(id, playerId, game, true, setupVertex)) return
         game.edges[id].road = { playerId }
-
         grantPortAccess(game, id, playerId)
         game.log.push(addLog(game, `${game.players[playerId].name} placed a supply route`, playerId))
         advanceSetup(game, s)
         return
       }
 
-      if (game.phase === 'playing' || game.phase === 'road_building') {
-        get().buildRoute(id)
+      const counts = countPlayerBuildings(game, playerId)
+      if (counts.routes >= BUILDING_LIMITS.route) return
+
+      if (game.phase === 'road_building') {
+        if (!canPlaceRoad(id, playerId, game, false)) return
+        game.edges[id].road = { playerId }
+        game.freeRoadsRemaining -= 1
+        if (game.freeRoadsRemaining === 0) game.phase = 'playing'
+        grantPortAccess(game, id, playerId)
+        updateLongestRoad(game)
+        game.log.push(addLog(game, `${player.name} built a supply route`, playerId))
+        checkWinner(game)
+        return
+      }
+
+      if (game.phase === 'playing') {
+        if (!game.hasRolled) return
+        if (!canAfford(player, COSTS.route)) return
+        if (!canPlaceRoad(id, playerId, game, false)) return
+        game.players[playerId].resources = subtractResources(player.resources, COSTS.route)
+        game.edges[id].road = { playerId }
+        grantPortAccess(game, id, playerId)
+        updateLongestRoad(game)
+        game.log.push(addLog(game, `${player.name} built a supply route`, playerId))
+        checkWinner(game)
       }
     }),
 

@@ -102,9 +102,7 @@ export function GameLayout() {
           >
             <div
               className="w-2 h-2 rounded-full"
-              style={{
-                background: PLAYER_HEX_COLORS[currentPlayer.color],
-              }}
+              style={{ background: PLAYER_HEX_COLORS[currentPlayer.color] }}
             />
             {currentPlayer.name}'s turn
           </div>
@@ -113,7 +111,7 @@ export function GameLayout() {
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         <div
-          className="w-56 flex-shrink-0 flex flex-col gap-2 p-3 overflow-y-auto"
+          className="w-48 flex-shrink-0 flex flex-col gap-2 p-3 overflow-y-auto"
           style={{ borderRight: '1px solid #21262d' }}
         >
           <div className="text-xs font-bold text-white/30 uppercase tracking-wider px-1">Players</div>
@@ -148,89 +146,90 @@ export function GameLayout() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-4 overflow-hidden relative">
-          <AnimatePresence>
-            {game.phase === 'robber' && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2"
-                style={{ background: '#7f1d1d', border: '1px solid #ef4444', color: '#fecaca' }}
-              >
-                <AlertTriangle size={14} />
-                Click a hex to move the robber
-              </motion.div>
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex items-center justify-center overflow-hidden relative">
+            <AnimatePresence>
+              {game.phase === 'robber' && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2"
+                  style={{ background: '#7f1d1d', border: '1px solid #ef4444', color: '#fecaca' }}
+                >
+                  <AlertTriangle size={14} />
+                  Click a hex to move the robber
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <HexBoard width={700} height={560} />
+          </div>
+
+          <div
+            className="flex-shrink-0 px-4 py-2 flex items-center gap-3"
+            style={{ background: '#161b22', borderTop: '1px solid #21262d' }}
+          >
+            <DiceDisplay roll={game.lastRoll} />
+
+            <motion.button
+              whileHover={canRoll ? { scale: 1.02 } : {}}
+              whileTap={canRoll ? { scale: 0.98 } : {}}
+              onClick={rollDice}
+              disabled={!canRoll}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all"
+              style={{
+                background: canRoll
+                  ? 'linear-gradient(135deg, #1e40af, #1d4ed8)'
+                  : 'rgba(255,255,255,0.04)',
+                color: canRoll ? '#fff' : '#ffffff30',
+                border: `1px solid ${canRoll ? '#3b82f6' : 'rgba(255,255,255,0.06)'}`,
+                cursor: canRoll ? 'pointer' : 'not-allowed',
+              }}
+            >
+              <Dice5 size={16} />
+              Roll {canRoll && <span className="text-xs opacity-50">[R]</span>}
+            </motion.button>
+
+            {game.phase === 'playing' && myTurn && (
+              <>
+                {game.hasRolled && (
+                  <>
+                    <div className="relative"><BuildMenu /></div>
+                    <div className="relative"><TradeMenu /></div>
+                  </>
+                )}
+                <div className="relative"><DevCardMenu /></div>
+                <div className="relative"><PlayerTradeMenu /></div>
+              </>
             )}
-          </AnimatePresence>
-          <HexBoard width={700} height={620} />
+
+            <div className="flex-1" />
+
+            <motion.button
+              whileHover={canEndTurn ? { scale: 1.02 } : {}}
+              whileTap={canEndTurn ? { scale: 0.98 } : {}}
+              onClick={endTurn}
+              disabled={!canEndTurn}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all"
+              style={{
+                background: canEndTurn
+                  ? 'linear-gradient(135deg, #065f46, #047857)'
+                  : 'rgba(255,255,255,0.04)',
+                color: canEndTurn ? '#fff' : '#ffffff30',
+                border: `1px solid ${canEndTurn ? '#10b981' : 'rgba(255,255,255,0.06)'}`,
+                cursor: canEndTurn ? 'pointer' : 'not-allowed',
+              }}
+            >
+              End Turn {canEndTurn && <span className="text-xs opacity-50">[E]</span>}
+              <ChevronRight size={14} />
+            </motion.button>
+          </div>
         </div>
 
         <div
-          className="w-64 flex-shrink-0 flex flex-col overflow-visible"
+          className="w-56 flex-shrink-0 flex flex-col"
           style={{ borderLeft: '1px solid #21262d' }}
         >
-          <div className="p-3 flex-shrink-0 relative z-20" style={{ borderBottom: '1px solid #21262d' }}>
-            <div className="mb-3">
-              <div className="text-xs font-bold text-white/30 uppercase tracking-wider mb-2">Dice</div>
-              <DiceDisplay roll={game.lastRoll} />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <motion.button
-                whileHover={canRoll ? { scale: 1.02 } : {}}
-                whileTap={canRoll ? { scale: 0.98 } : {}}
-                onClick={rollDice}
-                disabled={!canRoll}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all"
-                style={{
-                  background: canRoll
-                    ? 'linear-gradient(135deg, #1e40af, #1d4ed8)'
-                    : 'rgba(255,255,255,0.04)',
-                  color: canRoll ? '#fff' : '#ffffff30',
-                  border: `1px solid ${canRoll ? '#3b82f6' : 'rgba(255,255,255,0.06)'}`,
-                  cursor: canRoll ? 'pointer' : 'not-allowed',
-                  boxShadow: canRoll ? '0 4px 16px rgba(59,130,246,0.3)' : 'none',
-                }}
-              >
-                <Dice5 size={16} />
-                Roll Dice
-                {canRoll && <span className="text-xs opacity-50 ml-1">[R]</span>}
-              </motion.button>
-
-              {game.phase === 'playing' && myTurn && (
-                <>
-                  <div className="flex gap-1.5">
-                    {game.hasRolled && <div className="flex-1 min-w-0"><BuildMenu /></div>}
-                    {game.hasRolled && <div className="flex-1 min-w-0"><TradeMenu /></div>}
-                    <div className="flex-1 min-w-0"><DevCardMenu /></div>
-                  </div>
-                  <PlayerTradeMenu />
-                </>
-              )}
-
-              <motion.button
-                whileHover={canEndTurn ? { scale: 1.02 } : {}}
-                whileTap={canEndTurn ? { scale: 0.98 } : {}}
-                onClick={endTurn}
-                disabled={!canEndTurn}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all"
-                style={{
-                  background: canEndTurn
-                    ? 'linear-gradient(135deg, #065f46, #047857)'
-                    : 'rgba(255,255,255,0.04)',
-                  color: canEndTurn ? '#fff' : '#ffffff30',
-                  border: `1px solid ${canEndTurn ? '#10b981' : 'rgba(255,255,255,0.06)'}`,
-                  cursor: canEndTurn ? 'pointer' : 'not-allowed',
-                }}
-              >
-                End Turn
-                {canEndTurn && <span className="text-xs opacity-50">[E]</span>}
-                <ChevronRight size={14} />
-              </motion.button>
-            </div>
-          </div>
-
           <TradeResponseBanner />
           <div className="flex-1 min-h-0 p-3">
             <div className="h-full">
