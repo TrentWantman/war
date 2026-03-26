@@ -39,6 +39,8 @@ export function GameLayout() {
   const rollDice = useGameStore(s => s.rollDice)
   const endTurn = useGameStore(s => s.endTurn)
   const isMyTurn = useGameStore(s => s.isMyTurn)
+  const isMultiplayer = useGameStore(s => s.isMultiplayer)
+  const localPlayerId = useGameStore(s => s.localPlayerId)
 
   if (!game) return null
 
@@ -116,14 +118,18 @@ export function GameLayout() {
           style={{ borderRight: '1px solid #21262d' }}
         >
           <div className="text-xs font-bold text-white/30 uppercase tracking-wider px-1">Players</div>
-          {game.playerOrder.map(pid => (
-            <PlayerPanel
-              key={pid}
-              player={game.players[pid]}
-              isCurrentPlayer={pid === currentPlayerId}
-              state={game}
-            />
-          ))}
+          {game.playerOrder.map(pid => {
+            const isLocal = isMultiplayer ? pid === localPlayerId : !game.players[pid].isAI
+            return (
+              <PlayerPanel
+                key={pid}
+                player={game.players[pid]}
+                isCurrentPlayer={pid === currentPlayerId}
+                isLocalPlayer={isLocal}
+                state={game}
+              />
+            )
+          })}
 
           <div className="mt-2 space-y-1.5">
             {game.longestRoadPlayerId && (

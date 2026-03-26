@@ -1,24 +1,27 @@
 import { motion } from 'framer-motion'
 import type { Player, GameState } from '../../types/game'
 import { PLAYER_HEX_COLORS } from '../../constants/colors'
-import { ResourceDisplay } from '../ui/ResourceDisplay'
-import { calculateVP } from '../../utils/gameLogic'
+import { calculateVP, totalResources } from '../../utils/gameLogic'
+import { countPlayerBuildings } from '../../store/helpers'
 
 interface PlayerPanelProps {
   player: Player
   isCurrentPlayer: boolean
+  isLocalPlayer: boolean
   state: GameState
 }
 
-export function PlayerPanel({ player, isCurrentPlayer, state }: PlayerPanelProps) {
+export function PlayerPanel({ player, isCurrentPlayer, isLocalPlayer, state }: PlayerPanelProps) {
   const vp = calculateVP(state, player.id)
   const color = PLAYER_HEX_COLORS[player.color]
+  const counts = countPlayerBuildings(state, player.id)
+  const total = totalResources(player.resources)
 
   return (
     <motion.div
       animate={{ scale: isCurrentPlayer ? 1.02 : 1 }}
       transition={{ duration: 0.2 }}
-      className="rounded-lg p-3 transition-all"
+      className="rounded-lg p-2.5 transition-all"
       style={{
         background: isCurrentPlayer
           ? `linear-gradient(135deg, ${color}20, ${color}08)`
@@ -27,49 +30,51 @@ export function PlayerPanel({ player, isCurrentPlayer, state }: PlayerPanelProps
         boxShadow: isCurrentPlayer ? `0 0 20px ${color}20` : 'none',
       }}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-1.5">
           <div
-            className="w-3 h-3 rounded-full flex-shrink-0"
+            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
             style={{ background: color, boxShadow: isCurrentPlayer ? `0 0 6px ${color}` : 'none' }}
           />
-          <span className={`font-semibold text-sm ${isCurrentPlayer ? 'text-white' : 'text-white/70'}`}>
+          <span className={`font-bold text-xs ${isCurrentPlayer ? 'text-white' : 'text-white/70'}`}>
             {player.name}
           </span>
           {player.isAI && (
-            <span className="text-xs px-1 py-0.5 rounded bg-white/10 text-white/40">AI</span>
+            <span className="text-xs px-1 rounded bg-white/10 text-white/30" style={{ fontSize: 9 }}>AI</span>
           )}
-          {isCurrentPlayer && (
-            <motion.span
-              animate={{ opacity: [1, 0.5, 1] }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-              className="text-xs px-1.5 py-0.5 rounded font-bold"
-              style={{ background: color + '30', color }}
-            >
-              TURN
-            </motion.span>
+          {isLocalPlayer && (
+            <span className="text-xs px-1 rounded bg-blue-500/20 text-blue-400" style={{ fontSize: 9 }}>YOU</span>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-yellow-400 font-bold text-sm">VP {vp}</span>
-          {vp >= 10 && <span className="text-yellow-300 text-xs font-bold animate-pulse">WIN!</span>}
-        </div>
+        <span className="text-yellow-400 font-bold text-xs">VP {vp}</span>
       </div>
 
-      <ResourceDisplay resources={player.resources} compact />
+      <div className="flex items-center gap-2 text-xs text-white/40" style={{ fontSize: 10 }}>
+        <span>{total} cards</span>
+        <span>{counts.outposts}o {counts.bases}b {counts.routes}r</span>
+        {player.devCards.length > 0 && <span>{player.devCards.length} dev</span>}
+      </div>
 
-      <div className="flex items-center gap-3 mt-2 text-xs text-white/50">
-        {player.devCards.length > 0 && (
-          <span title="Development cards">Cards: {player.devCards.length}</span>
-        )}
-        {player.soldiersPlayed > 0 && (
-          <span title="Soldiers played">Soldiers: {player.soldiersPlayed}</span>
-        )}
+      {isCurrentPlayer && (
+        <motion.div
+          animate={{ opacity: [1, 0.5, 1] }}
+          transition={{ repeat: Infinity, duration: 1.5 }}
+          className="mt-1 text-center rounded py-0.5 font-bold"
+          style={{ background: color + '20', color, fontSize: 9 }}
+        >
+          TURN
+        </motion.div>
+      )}
+
+      <div className="flex items-center gap-2 mt-1 text-xs text-white/40" style={{ fontSize: 9 }}>
         {state.longestRoadPlayerId === player.id && (
-          <span title="Longest Supply Line" className="text-blue-400">Longest Road</span>
+          <span className="text-blue-400">Longest Road</span>
         )}
         {state.largestArmyPlayerId === player.id && (
-          <span title="Largest Force" className="text-red-400">Largest Force</span>
+          <span className="text-red-400">Largest Force</span>
+        )}
+        {player.soldiersPlayed > 0 && (
+          <span>Soldiers: {player.soldiersPlayed}</span>
         )}
       </div>
     </motion.div>
