@@ -14,6 +14,7 @@ export function DiscardModal() {
   if (!game || !showDiscardMenu || !discardTarget) return null
 
   const player = game.players[discardTarget]
+  if (player.isAI) return null
   const needed = discardAmount(player)
   const selected = totalResources(discardSelections)
 

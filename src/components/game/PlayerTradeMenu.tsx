@@ -178,6 +178,8 @@ export function TradeResponseBanner() {
   const game = useGameStore(s => s.game)
   const respondTrade = useGameStore(s => s.respondTrade)
   const cancelTrade = useGameStore(s => s.cancelTrade)
+  const isMultiplayer = useGameStore(s => s.isMultiplayer)
+  const localPlayerId = useGameStore(s => s.localPlayerId)
 
   if (!game || !game.activeTrade) return null
 
@@ -185,8 +187,15 @@ export function TradeResponseBanner() {
   const from = game.players[trade.fromPlayerId]
   const fromColor = PLAYER_HEX_COLORS[from.color]
 
-  const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
-  const isProposer = trade.fromPlayerId === currentPlayerId
+  let myPlayerId: string
+  if (isMultiplayer && localPlayerId) {
+    myPlayerId = localPlayerId
+  } else {
+    myPlayerId = game.playerOrder.find(pid => !game.players[pid].isAI) ?? game.playerOrder[0]
+  }
+
+  const isProposer = trade.fromPlayerId === myPlayerId
+  if (!isProposer && from.isAI) return null
 
   if (isProposer) {
     return (
@@ -246,7 +255,7 @@ export function TradeResponseBanner() {
       <div className="flex gap-2">
         <button
           onClick={() => {
-            game.activeTrade!.toPlayerId = currentPlayerId
+            game.activeTrade!.toPlayerId = myPlayerId
             respondTrade(true)
           }}
           className="flex-1 py-1.5 rounded text-xs font-bold"

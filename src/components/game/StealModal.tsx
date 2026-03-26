@@ -5,8 +5,10 @@ import { PLAYER_HEX_COLORS } from '../../constants/colors'
 export function StealModal() {
   const game = useGameStore(s => s.game)
   const stealResource = useGameStore(s => s.stealResource)
+  const isMyTurn = useGameStore(s => s.isMyTurn)
 
   if (!game || game.phase !== 'stealing') return null
+  if (!isMyTurn()) return null
 
   const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
   const robberTile = game.tiles[game.robberTileId]
