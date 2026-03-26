@@ -37,14 +37,16 @@ export function GameLayout() {
   const game = useGameStore(s => s.game)
   const rollDice = useGameStore(s => s.rollDice)
   const endTurn = useGameStore(s => s.endTurn)
+  const isMyTurn = useGameStore(s => s.isMyTurn)
 
   if (!game) return null
 
   const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
   const currentPlayer = game.players[currentPlayerId]
+  const myTurn = isMyTurn()
 
-  const canRoll = game.phase === 'playing' && !game.hasRolled
-  const canEndTurn = game.phase === 'playing' && game.hasRolled
+  const canRoll = game.phase === 'playing' && !game.hasRolled && myTurn
+  const canEndTurn = game.phase === 'playing' && game.hasRolled && myTurn
   const isSetup = game.phase === 'setup'
 
   const phaseLabel = PHASE_LABELS[game.phase] ?? game.phase
@@ -196,7 +198,7 @@ export function GameLayout() {
                 {canRoll && <span className="text-xs opacity-50 ml-1">[R]</span>}
               </motion.button>
 
-              {game.phase === 'playing' && (
+              {game.phase === 'playing' && myTurn && (
                 <>
                   <div className="flex gap-1.5">
                     {game.hasRolled && <div className="flex-1 min-w-0"><BuildMenu /></div>}

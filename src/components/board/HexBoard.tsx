@@ -378,16 +378,19 @@ export function HexBoard({ width = 700, height = 620 }: HexBoardProps) {
     setLocalHoverId(null)
   }, [])
 
+  const isMyTurn = useGameStore(s => s.isMyTurn)
+
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!game) return
     const currentPlayer = game.players[game.playerOrder[game.currentPlayerIndex]]
     if (currentPlayer.isAI) return
+    if (!isMyTurn()) return
     const hit = hitTestCanvas(e)
     if (!hit) return
     if (hit.type === 'vertex') clickVertex(hit.id)
     else if (hit.type === 'edge') clickEdge(hit.id)
     else if (hit.type === 'tile') clickTile(hit.id)
-  }, [game, hitTestCanvas, clickVertex, clickEdge, clickTile])
+  }, [game, hitTestCanvas, clickVertex, clickEdge, clickTile, isMyTurn])
 
   return (
     <canvas

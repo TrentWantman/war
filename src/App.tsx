@@ -68,9 +68,13 @@ function App() {
         break
       case 'game_started': {
         const store = useGameStore.getState()
-        const pid = roomState.playerId
-        if (pid) {
-          store.setMultiplayer(pid, (gameState: GameState) => {
+        const room = roomState.room
+        const roomPid = roomState.playerId
+        if (room && roomPid) {
+          const roomPlayerIds = Object.keys(room.players)
+          const myIndex = roomPlayerIds.indexOf(roomPid)
+          const gamePlayerId = `player-${myIndex}`
+          store.setMultiplayer(gamePlayerId, (gameState: GameState) => {
             sendRef({ type: 'state_sync', gameState })
           })
         }

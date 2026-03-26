@@ -8,6 +8,7 @@ export function useKeyboardShortcuts() {
   const toggleBuildMenu = useGameStore(s => s.toggleBuildMenu)
   const toggleTradeMenu = useGameStore(s => s.toggleTradeMenu)
   const toggleDevCardMenu = useGameStore(s => s.toggleDevCardMenu)
+  const isMyTurn = useGameStore(s => s.isMyTurn)
 
   useEffect(() => {
     if (!game) return
@@ -17,6 +18,7 @@ export function useKeyboardShortcuts() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return
+      if (!isMyTurn()) return
 
       switch (e.key.toLowerCase()) {
         case 'r':
@@ -59,5 +61,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [game, rollDice, endTurn, toggleBuildMenu, toggleTradeMenu, toggleDevCardMenu])
+  }, [game, rollDice, endTurn, toggleBuildMenu, toggleTradeMenu, toggleDevCardMenu, isMyTurn])
 }

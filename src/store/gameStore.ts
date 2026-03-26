@@ -92,6 +92,7 @@ interface GameStore {
   getValidBaseVertices: () => string[]
   getValidRouteEdges: () => string[]
   getCurrentPlayer: () => Player | null
+  isMyTurn: () => boolean
 }
 
 export const useGameStore = create<GameStore>()(
@@ -693,6 +694,14 @@ export const useGameStore = create<GameStore>()(
       const { game } = get()
       if (!game) return null
       return game.players[game.playerOrder[game.currentPlayerIndex]]
+    },
+
+    isMyTurn: () => {
+      const { game, isMultiplayer, localPlayerId } = get()
+      if (!game) return false
+      if (!isMultiplayer) return true
+      const currentPlayerId = game.playerOrder[game.currentPlayerIndex]
+      return currentPlayerId === localPlayerId
     },
   }))
 )
