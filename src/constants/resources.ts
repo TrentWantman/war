@@ -41,13 +41,4 @@ export const TERRAIN_LABELS: Record<TerrainType, string> = {
   desert: 'Desert',
 }
 
-export const TERRAIN_COLORS: Record<TerrainType, { fill: string; dark: string }> = {
-  food: { fill: '#f59e0b', dark: '#d97706' },
-  weapons: { fill: '#ef4444', dark: '#dc2626' },
-  ammo: { fill: '#6b7280', dark: '#4b5563' },
-  tools: { fill: '#92400e', dark: '#78350f' },
-  supplies: { fill: '#86efac', dark: '#4ade80' },
-  desert: { fill: '#d2b48c', dark: '#c4a882' },
-}
-
 export const RESOURCE_TYPES: ResourceType[] = ['food', 'weapons', 'ammo', 'tools', 'supplies']
